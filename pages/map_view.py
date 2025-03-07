@@ -57,7 +57,10 @@ def update_airport_info(selected_iata):
         airlines_details = html.P("No airlines found for this airport.")
     else:
         airlines_list = [html.Li(f"{carrier.name} ({carrier.iata})") for carrier in all_carriers]
-        airlines_details = html.Div([html.H4("Airlines Serving This Airport:"), html.Ul(airlines_list)])
+        airlines_details = html.Div([
+            html.H4(f"Airlines Serving This Airport [{len(airlines_list)}]:"),
+            html.Ul(airlines_list)
+        ])
 
     # Map
     map_fig = px.scatter_geo(
