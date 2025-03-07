@@ -22,7 +22,6 @@ layout = html.Div([
         config={
             'scrollZoom': True,
             'displayModeBar': False,
-            'modeBarButtonsToRemove': ['zoom', 'zoomIn', 'zoomOut', 'autoScale', 'resetScale']
         }
     )
 ])
