@@ -16,18 +16,20 @@ airport_options = [
     for _, row in airports_df.iterrows()
 ]
 
-layout = html.Div([
+layout = html.Div(className="container", children=[
     html.H2("Table View - Flight Map Routing"),
 
-    html.Label("Select an Airport:"),
-    dcc.Dropdown(
-        id='airport-dropdown',
-        options=airport_options,
-        placeholder="Select an airport"
-    ),
+    html.Div(className="section", children=[
+        html.Label("Select an Airport:"),
+        dcc.Dropdown(
+            id='airport-dropdown',
+            options=airport_options,
+            placeholder="Select an airport"
+        )
+    ]),
 
-    html.Div(id='airport-info-table'),
-    html.Div(id='airlines-info-table')
+    html.Div(className="section", id='airport-info-table'),
+    html.Div(className="section", id='airlines-info-table')
 ])
 
 @callback(
@@ -42,10 +44,7 @@ def update_airport_table(selected_iata):
     airport = airports_df[airports_df['IATA'] == selected_iata].iloc[0]
 
     airport_table = dash_table.DataTable(
-        columns=[
-            {"name": "Attribute", "id": "Attribute"},
-            {"name": "Value", "id": "Value"}
-        ],
+        columns=[{"name": "Attribute", "id": "Attribute"}, {"name": "Value", "id": "Value"}],
         data=[
             {"Attribute": "Airport Name", "Value": airport['Airport Name']},
             {"Attribute": "City", "Value": airport['City']},
@@ -53,8 +52,7 @@ def update_airport_table(selected_iata):
             {"Attribute": "Latitude", "Value": airport['Latitude']},
             {"Attribute": "Longitude", "Value": airport['Longitude']},
             {"Attribute": "Timezone", "Value": airport['Timezone']}
-        ],
-        style_table={'margin-bottom': '20px'}
+        ]
     )
 
     related_routes = routes_df[(routes_df['Departure Airport IATA'] == selected_iata) |
@@ -64,16 +62,9 @@ def update_airport_table(selected_iata):
         airlines_df, on='Airline ID', how='left'
     ).dropna(subset=['Airline Name'])
 
-    if airlines_serving.empty:
-        airlines_table = html.P("No airlines found for this airport.")
-    else:
-        airlines_table = dash_table.DataTable(
-            columns=[
-                {"name": "Airline Name", "id": "Airline Name"},
-                {"name": "Airline IATA", "id": "Airline IATA"}
-            ],
-            data=airlines_serving[["Airline Name", "Airline IATA"]].drop_duplicates().to_dict('records'),
-            style_table={'margin-bottom': '20px'}
-        )
+    airlines_table = dash_table.DataTable(
+        columns=[{"name": "Airline Name", "id": "Airline Name"}, {"name": "Airline IATA", "id": "Airline IATA"}],
+        data=airlines_serving[['Airline Name', 'Airline IATA']].drop_duplicates().to_dict('records')
+    )
 
     return airport_table, airlines_table

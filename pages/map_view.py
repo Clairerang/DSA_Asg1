@@ -17,19 +17,23 @@ airport_options = [
     for _, row in airports_df.iterrows()
 ]
 
-layout = html.Div([
+layout = html.Div(className="container", children=[
     html.H2("Map View - Flight Map Routing"),
 
-    html.Label("Select an Airport:"),
-    dcc.Dropdown(
-        id='airport-dropdown',
-        options=airport_options,
-        placeholder="Select an airport"
-    ),
+    html.Div(className="section", children=[
+        html.Label("Select an Airport:"),
+        dcc.Dropdown(
+            id='airport-dropdown',
+            options=airport_options,
+            placeholder="Select an airport"
+        )
+    ]),
 
-    html.Div(id='airport-info'),
-    html.Div(id='airlines-info'),
-    dcc.Graph(id='airport-map')
+    html.Div(className="section", id='airport-info'),
+    html.Div(className="section", id='airlines-info'),
+    html.Div(className="section", children=[
+        dcc.Graph(id='airport-map')
+    ])
 ])
 
 @callback(
@@ -45,10 +49,10 @@ def update_airport_info(selected_iata):
     airport = airports_df[airports_df['IATA'] == selected_iata].iloc[0]
 
     airport_details = html.Div([
-        html.H3(f"Airport: {airport['Airport Name']}"),
-        html.P(f"Location: {airport['City']}, {airport['Country']}"),
-        html.P(f"Coordinates: {airport['Latitude']}, {airport['Longitude']}"),
-        html.P(f"Timezone: {airport['Timezone']}")
+        html.H3(f"{airport['Airport Name']}"),
+        html.P(f"📍 {airport['City']}, {airport['Country']}"),
+        html.P(f"🌐 Coordinates: {airport['Latitude']}, {airport['Longitude']}"),
+        html.P(f"🕒 Timezone: {airport['Timezone']}")
     ])
 
     related_routes = routes_df[(routes_df['Departure Airport IATA'] == selected_iata) |
@@ -74,7 +78,6 @@ def update_airport_info(selected_iata):
         projection="natural earth",
         title=f"Location of {airport['Airport Name']}"
     )
-
     map_fig.update_traces(marker=dict(size=12, color="red"))
     map_fig.update_geos(showcountries=True, showcoastlines=True, showland=True, landcolor="lightgray")
 
