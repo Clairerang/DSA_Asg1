@@ -1,39 +1,30 @@
-import pandas as pd
 import plotly.express as px
 from dash import html, dcc, Output, Input, callback, register_page
+from data_loader import airport_db  # Import the global AirportDatabase object
 
-# Register this page with Dash
 register_page(__name__, path='/map-view')
 
-# Load datasets
-airlines_df = pd.read_csv("./Sample Data/Airline Sample.csv")  # Your airline dataset
-airports_df = pd.read_csv("./Sample Data/Airport Sample.csv")  # Your airport dataset
-routes_df = pd.read_csv("./Sample Data/Route Sample.csv")      # Your routes dataset
-
-airlines_df.replace("\\N", pd.NA, inplace=True)
-
+# Dropdown options using the JSON data
 airport_options = [
-    {'label': f"{row['Airport Name']} ({row['IATA']})", 'value': row['IATA']}
-    for _, row in airports_df.iterrows()
+    {'label': f"{airport.name} ({airport.iata})", 'value': airport.iata}
+    for airport in sorted(airport_db.airports.values(), key=lambda a: a.name)
 ]
 
-layout = html.Div(className="container", children=[
+
+layout = html.Div([
     html.H2("Map View - Flight Map Routing"),
+    html.Label("Select an Airport:"),
+    dcc.Dropdown(id='airport-dropdown', options=airport_options, placeholder="Select an airport"),
 
-    html.Div(className="section", children=[
-        html.Label("Select an Airport:"),
-        dcc.Dropdown(
-            id='airport-dropdown',
-            options=airport_options,
-            placeholder="Select an airport"
-        )
-    ]),
-
-    html.Div(className="section", id='airport-info'),
-    html.Div(className="section", id='airlines-info'),
-    html.Div(className="section", children=[
-        dcc.Graph(id='airport-map')
-    ])
+    html.Div(id='airport-info'),
+    html.Div(id='airlines-info'),
+    dcc.Graph(id='airport-map', 
+        config={
+            'scrollZoom': True,
+            'displayModeBar': False,
+            'modeBarButtonsToRemove': ['zoom', 'zoomIn', 'zoomOut', 'autoScale', 'resetScale']
+        }
+    )
 ])
 
 @callback(
@@ -43,42 +34,48 @@ layout = html.Div(className="container", children=[
     [Input('airport-dropdown', 'value')]
 )
 def update_airport_info(selected_iata):
-    if not selected_iata:
+    airport = airport_db.get_airport(selected_iata)
+
+    if not airport:
         return "", "", px.scatter_geo(projection="natural earth")
 
-    airport = airports_df[airports_df['IATA'] == selected_iata].iloc[0]
-
+    # Airport Information
     airport_details = html.Div([
-        html.H3(f"{airport['Airport Name']}"),
-        html.P(f"📍 {airport['City']}, {airport['Country']}"),
-        html.P(f"🌐 Coordinates: {airport['Latitude']}, {airport['Longitude']}"),
-        html.P(f"🕒 Timezone: {airport['Timezone']}")
+        html.H3(f"{airport.name}"),
+        html.P(f"📍 {airport.city_name}, {airport.country}"),
+        html.P(f"🌐 Coordinates: {airport.latitude}, {airport.longitude}"),
+        html.P(f"🕒 Timezone: {airport.timezone}"),
+        html.P(f"Elevation: {airport.elevation} meters")
     ])
 
-    related_routes = routes_df[(routes_df['Departure Airport IATA'] == selected_iata) |
-                               (routes_df['Arrival Airport IATA'] == selected_iata)]
+    # Airlines serving the airport (carriers in all routes)
+    all_carriers = set()
+    for route in airport.routes:
+        all_carriers.update(route.carriers)
 
-    airlines_serving = related_routes.merge(
-        airlines_df, on='Airline ID', how='left'
-    ).dropna(subset=['Airline Name'])
-
-    if airlines_serving.empty:
+    if not all_carriers:
         airlines_details = html.P("No airlines found for this airport.")
     else:
-        airlines_list = [
-            html.Li(f"{row['Airline Name']} ({row['Airline IATA']})")
-            for _, row in airlines_serving.drop_duplicates(subset=['Airline ID']).iterrows()
-        ]
+        airlines_list = [html.Li(f"{carrier.name} ({carrier.iata})") for carrier in all_carriers]
         airlines_details = html.Div([html.H4("Airlines Serving This Airport:"), html.Ul(airlines_list)])
 
+    # Map
     map_fig = px.scatter_geo(
-        lat=[airport['Latitude']],
-        lon=[airport['Longitude']],
-        text=[airport['Airport Name']],
+        lat=[airport.latitude],
+        lon=[airport.longitude],
+        text=[airport.name],
         projection="natural earth",
-        title=f"Location of {airport['Airport Name']}"
+        title=f"Location of {airport.name}"
     )
     map_fig.update_traces(marker=dict(size=12, color="red"))
-    map_fig.update_geos(showcountries=True, showcoastlines=True, showland=True, landcolor="lightgray")
+    map_fig.update_layout(
+        dragmode="pan",  # Only panning allowed
+        geo=dict(
+            showcountries=True,
+            showcoastlines=True,
+            showland=True,
+            landcolor="lightgray"
+        )
+    )
 
     return airport_details, airlines_details, map_fig
