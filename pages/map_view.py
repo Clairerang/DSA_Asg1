@@ -22,7 +22,8 @@ layout = html.Div([
         config={
             'scrollZoom': True,
             'displayModeBar': False,
-        }
+        },
+        style={'width': '100%', 'height': '500px'}
     )
 ])
 
