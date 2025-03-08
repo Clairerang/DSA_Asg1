@@ -2,7 +2,7 @@ import json
 import heapq
 from math import radians, cos, sin, sqrt, atan2
 
-# Load the dataset
+#load the dataset
 with open('airline_routes.json', 'r') as file:
     airports = json.load(file)
 
@@ -17,13 +17,13 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
     return R * c
 
-# Heuristic function
+#heuristic function
 def heuristic(a, b):
     lat1, lon1 = float(airports[a]['latitude']), float(airports[a]['longitude'])
     lat2, lon2 = float(airports[b]['latitude']), float(airports[b]['longitude'])
     return haversine_distance(lat1, lon1, lat2, lon2)
 
-# A* search algorithm implementation
+#A* search algorithm implementation
 def astar(airports, start, goal):
     open_set = [(0, start, [])]
     visited = set()
@@ -47,11 +47,11 @@ def astar(airports, start, goal):
 
     return None
 
-# Find airports by country
+#find airports by country
 def find_airports(country_name):
     return [iata for iata, airport in airports.items() if airport['country'].lower() == country_name.lower()]
 
-# User inputs
+#user inputs
 start_country = input("Enter departure country: ").strip()
 goal_country = input("Enter destination country: ").strip()
 
