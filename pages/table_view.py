@@ -9,12 +9,12 @@ airport_options = [
 ]
 
 layout = html.Div([
-    html.H2("Table View - Flight Map Routing"),
-    html.Label("Select an Airport:"),
-    dcc.Dropdown(id='airport-dropdown', options=airport_options, placeholder="Select an airport"),
+    html.H2("Table View - Flight Map Routing", className="text-4xl font-bold text-black mb-4"),
+    html.Label("Select an Airport:", className="block text-lg font-medium text-gray-700 mb-2"),
+    dcc.Dropdown(id='airport-dropdown', options=airport_options, placeholder="Select an airport", className="mb-4 p-2 border border-gray-300 rounded-md"),
 
-    html.Div(id='airport-info-table'),
-    html.Div(id='airlines-info-table')
+    html.Div(id='airport-info-table', className="mt-4"),
+    html.Div(id='airlines-info-table', className="mt-4")
 ])
 
 @callback(
@@ -39,7 +39,10 @@ def update_airport_table(selected_iata):
             {"Attribute": "Longitude", "Value": airport.longitude},
             {"Attribute": "Timezone", "Value": airport.timezone},
             {"Attribute": "Elevation", "Value": f"{airport.elevation} meters"}
-        ]
+        ],
+        style_table={'overflowX': 'auto'},
+        style_cell={'textAlign': 'left', 'padding': '10px'},
+        style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
     )
 
     # Airlines Table
@@ -48,11 +51,14 @@ def update_airport_table(selected_iata):
         all_carriers.update(route.carriers)
 
     if not all_carriers:
-        airlines_table = html.P("No airlines found for this airport.")
+        airlines_table = html.P("No airlines found for this airport.", className="text-red-500")
     else:
         airlines_table = dash_table.DataTable(
             columns=[{"name": "Airline Name", "id": "Airline Name"}, {"name": "IATA", "id": "IATA"}],
-            data=[{"Airline Name": carrier.name, "IATA": carrier.iata} for carrier in all_carriers]
+            data=[{"Airline Name": carrier.name, "IATA": carrier.iata} for carrier in all_carriers],
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left', 'padding': '10px'},
+            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
         )
 
     return airport_table, airlines_table

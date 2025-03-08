@@ -1,21 +1,49 @@
 import dash
-from dash import html, dcc, page_container
+from dash import html, dcc, page_container, callback, Input, Output
 
+# Tailwind CSS for styling
 external_stylesheets = ["https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"]
+
+# Initialize Dash app with pages enabled
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, use_pages=True)
 
-app.layout = html.Div(className="container", children=[
-    html.H1("Flight Map Routing System", className="text-4xl font-bold text-red-500"),
+# Layout with sidebar
+app.layout = html.Div(className="flex min-h-screen", children=[
     
-    html.Div(className="section", children=[
-        dcc.Link('🌍 Map View', href='/map-view', style={'margin-right': '20px'}),
-        dcc.Link('📊 Table View', href='/table-view')
+    # Sidebar Panel
+    html.Div(className="w-64 bg-white/90 border-r border-gray-200 p-3", children=[
+        html.H2("Flight Routing System", className="text-xl font-bold text-start text-black"),
+        html.Hr(),
+        html.Div(id="sidebar-links", className="flex flex-col gap-2"),
     ]),
 
-    html.Hr(),
-
-    page_container
+    # Main Content Area
+    html.Div(className="flex-1 p-10", children=[ 
+        # Page Container for Routing
+        page_container
+    ])
 ])
+
+# Callback to update active route styling
+@app.callback(
+    Output("sidebar-links", "children"),
+    Input("url", "pathname")  # Track URL changes
+)
+def update_active_link(pathname):
+    # Define links with conditional classes
+    return [
+        dcc.Link(
+            "Map View", href="/map-view",
+            className=f"block py-3 px-2 rounded-md {'bg-gray-600 text-white' if pathname == '/map-view' else 'hover:bg-gray-200 transition-colors duration-300'}"
+        ),
+        dcc.Link(
+            "Table View", href="/table-view",
+            className=f"block py-3 px-2 rounded-md {'bg-gray-600 text-white' if pathname == '/table-view' else 'hover:bg-gray-200 transition-colors duration-300'}"
+        ),
+    ]
+
+# Add location component for tracking current page
+app.layout.children.insert(0, dcc.Location(id="url", refresh=False))
 
 if __name__ == '__main__':
     app.run_server(debug=True)

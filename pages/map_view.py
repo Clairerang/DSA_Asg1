@@ -12,7 +12,7 @@ airport_options = [
 
 
 layout = html.Div([
-    html.H2("Map View - Flight Map Routing"),
+    html.H2("Map View - Flight Map Routing" , className="text-4xl font-bold text-black"),
     html.Label("Select an Airport:"),
     dcc.Dropdown(id='airport-dropdown', options=airport_options, placeholder="Select an airport"),
 
