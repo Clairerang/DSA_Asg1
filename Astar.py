@@ -2,13 +2,13 @@ import json
 import heapq
 from math import radians, cos, sin, sqrt, atan2
 
-#load the dataset
+#Load the dataset
 with open('airline_routes.json', 'r') as file:
     airports = json.load(file)
 
-# Calculate heuristic using haversine distance
+#calculate heuristic using haversine distance
 def haversine_distance(lat1, lon1, lat2, lon2):
-    R = 6371  # Earth radius in kilometers
+    R = 6371  #Earth radius in kilometers
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
     dlat, dlon = lat2 - lat1, lon2 - lon1
 
@@ -23,7 +23,7 @@ def heuristic(a, b):
     lat2, lon2 = float(airports[b]['latitude']), float(airports[b]['longitude'])
     return haversine_distance(lat1, lon1, lat2, lon2)
 
-#A* search algorithm implementation
+# A* search algorithm implementation
 def astar(airports, start, goal):
     open_set = [(0, start, [])]
     visited = set()
@@ -47,41 +47,24 @@ def astar(airports, start, goal):
 
     return None
 
-#find airports by country
-def find_airports(country_name):
-    return [iata for iata, airport in airports.items() if airport['country'].lower() == country_name.lower()]
+# user input by airport IATA codes
+start_airport = input("Enter departure airport IATA code: ").strip().upper()
+goal_airport = input("Enter destination airport IATA code: ").strip().upper()
 
-#user inputs
-start_country = input("Enter departure country: ").strip()
-goal_country = input("Enter destination country: ").strip()
+route = astar(airports, start_airport, goal_airport)
 
-start_airports = find_airports(start_country)
-goal_airports = find_airports(goal_country)
-
-shortest_route = None
-shortest_distance = float('inf')
-
-for start in start_airports:
-    for goal in goal_airports:
-        route = astar(airports, start, goal)
-        if route:
-            total_distance = sum(
-                next(route_info['km'] for route_info in airports[route[i]]['routes'] if route_info['iata'] == route[i + 1])
-                for i in range(len(route) - 1)
-            )
-
-            if total_distance < shortest_distance:
-                shortest_route = route
-                shortest_distance = total_distance
-
-if shortest_route:
+if route:
     print("Shortest route found:")
-    for i in range(len(shortest_route) - 1):
-        start_iata, next_iata = shortest_route[i], shortest_route[i + 1]
-        route_info = next(route for route in airports[start_iata]['routes'] if route['iata'] == next_iata)
-        carrier_names = ', '.join(carrier['name'] for carrier in route_info.get('carriers', [])) or "Unknown Airline"
-        print(f"{start} -> {goal} | {route_info['km']} km | Airlines: {carrier_names}")
+    total_distance = 0
+    for i in range(len(route) - 1):
+        segment_start, segment_end = route[i], route[i + 1]
+        route_info = next((r for r in airports[segment_start]['routes'] if r['iata'] == segment_end), None)
+        if route_info:
+            carrier_names = ', '.join(carrier['name'] for carrier in route_info.get('carriers', [])) or "Unknown Airline"
+            distance = route_info['km']
+            total_distance += distance
+            print(f"{segment_start} -> {segment_end} | {distance} km | Airline(s): {carrier_names}")
 
-    print(f"Total Distance: {shortest_distance} km")
+    print(f"Total distance: {total_distance} km")
 else:
-    print(f"No route found from {start_country} to {goal_country}.")
+    print("No route found between", start_airport, "and", goal_airport)
