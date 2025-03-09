@@ -74,10 +74,7 @@ def update_airport_info(selected_iata):
     map_fig.update_layout(
         dragmode="pan",  # Only panning allowed
         geo=dict(
-            showcountries=True,
-            showcoastlines=True,
             showland=True,
-            landcolor="lightgray"
         )
     )
 
