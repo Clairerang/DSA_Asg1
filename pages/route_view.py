@@ -57,12 +57,18 @@ def update_route_map(departure_iata, arrival_iata):
 
     if not possible_routes:
         route_validation_msg = f"❌ No direct flight available from {dep_airport.name} to {arr_airport.name}."
+        distance_km = "N/A"
+        estimated_time = "N/A"
     else:
+        # Get the shortest distance route (if multiple)
+        best_route = min(possible_routes, key=lambda r: r.km)
+        distance_km = f"{best_route.km} km"
+        estimated_time = f"{best_route.min} minutes"
+
         # Get airlines that operate the route
         serving_airlines = set()
-        for route in possible_routes:
-            for carrier in route.carriers:
-                serving_airlines.add(f"{carrier.name} ({carrier.iata})")
+        for carrier in best_route.carriers:
+            serving_airlines.add(f"{carrier.name} ({carrier.iata})")
 
         airline_list = html.Ul([html.Li(airline) for airline in serving_airlines])
 
@@ -80,7 +86,8 @@ def update_route_map(departure_iata, arrival_iata):
         html.H3("Flight Route Details"),
         html.P(f"✈ Departure: {dep_airport.name} ({dep_airport.iata}) - {dep_airport.city_name}, {dep_airport.country}"),
         html.P(f"🎯 Arrival: {arr_airport.name} ({arr_airport.iata}) - {arr_airport.city_name}, {arr_airport.country}"),
-        html.P(f"🌐 Distance: TBD (Need actual data source for distance)")
+        html.P(f"🌐 Distance: {distance_km}"),
+        html.P(f"⏳ Estimated Flight Time: {estimated_time}")
     ])
 
     # Map with line_geo (draw route if it exists)
