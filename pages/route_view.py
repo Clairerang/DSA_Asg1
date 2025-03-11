@@ -35,13 +35,13 @@ map_projections = [
 ]
 
 # Layout
-layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
+layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
     
     # Title
-    html.H2("Flight Path Visualization", className="text-4xl font-bold text-white my-3"),
+    html.H2("Flight Path Visualization", className="text-2xl font-bold text-white my-3"),
 
     # Form Section
-    html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-white p-6 rounded-lg ", children=[
+    html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 p-2 gap-4 bg-white p-6 rounded-lg ", children=[
         
         # Departure Airport Selection
         html.Div(children=[
@@ -113,8 +113,8 @@ layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
     html.Div(id='route-info', className="bg-white p-5 rounded-lg "),
 
     # Full-Width Map Visualization
-    html.Div(className="w-full md:h-screen h-full bg-white rounded-lg ", children=[
-        dcc.Graph(id='route-map', className="w-full h-full ", 
+    html.Div(className="w-full md:h-screen h-full bg-white rounded-lg  overflow-hidden", children=[
+        dcc.Graph(id='route-map', className="w-full h-full whiteline-pre", 
             config={'scrollZoom': True, 'displayModeBar': False})
     ])
 ])
