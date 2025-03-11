@@ -1,115 +1,149 @@
+import json
+from collections import deque
 import plotly.express as px
-from dash import html, dcc, Output, Input, callback, register_page
+from dash import dcc, html, Output, Input, callback, register_page
 from data_loader import airport_db  # Import the global AirportDatabase object
 
+# Register Dash Page
 register_page(__name__, path='/route-view')
 
-# Dropdown options sorted alphabetically
+# Load airport data
+with open('airline_routes.json', 'r') as file:
+    airports = json.load(file)
+
+# Generate dropdown options from airport database
 airport_options = [
-    {'label': f"{airport.name} ({airport.iata})", 'value': airport.iata}
-    for airport in sorted(airport_db.airports.values(), key=lambda a: a.name)
+    {'label': f"{airport['name']} ({iata})", 'value': iata}
+    for iata, airport in airports.items()
 ]
 
+# Define filter options
+extra_options = [
+    {'label': "Price (Cheapest)", 'value': "price_cheapest"},
+    {'label': "Shortest Path", 'value': "shortest_path"},
+]
+
+# Layout
 layout = html.Div([
     html.H2("Route View - Flight Path Visualization", className="text-4xl font-bold text-black"),
 
     # Departure Airport Selection
-    html.Label("Select Departure Airport:"),
+    html.Label("Select Departure Airport:", className="font-bold text-black mt-2 mb-1"),
     dcc.Dropdown(id='departure-airport-dropdown', options=airport_options, placeholder="Select a departure airport"),
 
     # Arrival Airport Selection
-    html.Label("Select Arrival Airport:"),
+    html.Label("Select Arrival Airport:", className="font-bold text-black mt-2 mb-1"),
     dcc.Dropdown(id='arrival-airport-dropdown', options=airport_options, placeholder="Select an arrival airport"),
 
-    # Route Validation Message
-    html.Div(id='route-validation', style={'font-weight': 'bold', 'margin-top': '10px', 'color': 'red'}),
+    # Filter options
+    html.Label("Filter by: ", className="font-bold text-black mt-2 mb-1"),
+    dcc.Dropdown(id='filter-dropdown', options=extra_options, placeholder="Filter by: "),
 
-    # Information Divs
-    html.Div(id='route-info'),
-    
-    # Map Visualization with a line between the two locations
-    dcc.Graph(id='route-map',
+    # Combined Route Information
+    html.Div(id='route-info', className="bg-gray-200 p-4 rounded-md my-4"),
+
+    # Map Visualization
+    dcc.Graph(id='route-map', className="rounded-md",
         config={'scrollZoom': True, 'displayModeBar': False},
-        style={'width': '100%', 'height': '500px'}
     )
 ])
 
+# BFS Algorithm to find minimum layovers
+def bfs_min_connections(airports, start, goal):
+    queue = deque([(start, [start])])
+    visited = set()
+
+    while queue:
+        current, path = queue.popleft()
+
+        if current == goal:
+            return path
+
+        visited.add(current)
+
+        for route in airports[current].get('routes', []):
+            neighbor = route['iata']
+            if neighbor in airports and neighbor not in visited:
+                visited.add(neighbor)
+                queue.append((neighbor, path + [neighbor]))
+
+    return None
+
+# Callback to compute the route
 @callback(
-    [Output('route-validation', 'children'),  # Displays if route exists
-     Output('route-info', 'children'),
+    [Output('route-info', 'children'),
      Output('route-map', 'figure')],
     [Input('departure-airport-dropdown', 'value'),
-     Input('arrival-airport-dropdown', 'value')]
+     Input('arrival-airport-dropdown', 'value'),
+     Input('filter-dropdown', 'value')]
 )
-def update_route_map(departure_iata, arrival_iata):
-    # Ensure both airports are selected
+def update_route_map(departure_iata, arrival_iata, filter_option):
     if not departure_iata or not arrival_iata:
-        return "", "", px.scatter_geo(projection="natural earth")
+        return "⚠️ Please select both departure and destination airports.", px.scatter_geo(projection="natural earth")
 
     dep_airport = airport_db.get_airport(departure_iata)
     arr_airport = airport_db.get_airport(arrival_iata)
 
     if not dep_airport or not arr_airport:
-        return "Invalid airport selection", "Invalid airport selection", px.scatter_geo(projection="natural earth")
+        return "Invalid airport selection", px.scatter_geo(projection="natural earth")
 
-    # Check if a direct route exists
-    possible_routes = [route for route in dep_airport.routes if route.iata == arrival_iata]
-
-    if not possible_routes:
-        route_validation_msg = f"❌ No direct flight available from {dep_airport.name} to {arr_airport.name}."
-        distance_km = "N/A"
-        estimated_time = "N/A"
+    # Find shortest path using BFS
+    if filter_option == "shortest_path":
+        route = bfs_min_connections(airports, departure_iata, arrival_iata)
     else:
-        # Get the shortest distance route (if multiple)
-        best_route = min(possible_routes, key=lambda r: r.km)
-        distance_km = f"{best_route.km} km"
-        estimated_time = f"{best_route.min} minutes"
+        # If no filter or cheapest price selected, find direct shortest route
+        route = [departure_iata, arrival_iata] if any(r['iata'] == arrival_iata for r in airports[departure_iata]['routes']) else None
 
-        # Get airlines that operate the route
-        serving_airlines = set()
-        for carrier in best_route.carriers:
-            serving_airlines.add(f"{carrier.name} ({carrier.iata})")
+    if not route:
+        return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection="natural earth")
 
-        airline_list = html.Ul([html.Li(airline) for airline in serving_airlines])
+    # Calculate total distance and stops
+    total_distance = 0
+    route_details = []
 
-        if serving_airlines:
-            route_validation_msg = html.Div([
-                html.Span(f"✅ Direct flights available from {dep_airport.name} to {arr_airport.name}."),
-                html.H4(f"Airlines serving this route [{len(serving_airlines)}]:"),
-                airline_list
-            ])
-        else:
-            route_validation_msg = f"❌ No airlines currently operate flights from {dep_airport.name} to {arr_airport.name}."
+    for i in range(len(route) - 1):
+        segment_start, segment_end = route[i], route[i + 1]
+        route_info = next((r for r in airports[segment_start]['routes'] if r['iata'] == segment_end), None)
 
-    # Route Information
-    route_details = html.Div([
-        html.H3("Flight Route Details"),
-        html.P(f"✈ Departure: {dep_airport.name} ({dep_airport.iata}) - {dep_airport.city_name}, {dep_airport.country}"),
-        html.P(f"🎯 Arrival: {arr_airport.name} ({arr_airport.iata}) - {arr_airport.city_name}, {arr_airport.country}"),
-        html.P(f"🌐 Distance: {distance_km}"),
-        html.P(f"⏳ Estimated Flight Time: {estimated_time}")
-    ])
+        if route_info:
+            carrier_names = ', '.join(carrier['name'] for carrier in route_info.get('carriers', [])) or "Unknown Airline"
+            distance = route_info['km']
+            total_distance += distance
+            route_details.append(html.P(f"✈️ {segment_start} → {segment_end} | {distance} km | Airline(s): {carrier_names}", className="text-gray-700"))
 
-    # Map with line_geo (draw route if it exists)
+    # Calculate estimated price (Assume $0.10 per km)
+    estimated_price = round(total_distance * 0.10, 2)
+
+    # Combined Route Information
+    route_info_content = html.Div([
+        html.H3("✅ Route Found", className="text-lg font-bold text-green-600"),
+        html.P(f"📍 Total Distance: {total_distance} km", className="font-semibold"),
+        html.P(f"✈️ Number of Layovers: {len(route) - 1}", className="font-semibold"),
+        html.P(f"💰 Estimated Price: ${estimated_price}", className="font-semibold"),
+        html.H4("🛫 Flight Route Details", className="font-bold mt-4"),
+        *route_details
+    ], className="bg-gray-200 p-2 rounded-md my-3 ")
+
+    # Map visualization
     route_fig = px.line_geo(
-        lat=[dep_airport.latitude, arr_airport.latitude],
-        lon=[dep_airport.longitude, arr_airport.longitude],
-        projection="natural earth",
+         lat=[dep_airport.latitude] + [airports[i]['latitude'] for i in route[1:-1]] + [arr_airport.latitude],
+    lon=[dep_airport.longitude] + [airports[i]['longitude'] for i in route[1:-1]] + [arr_airport.longitude],
+    text=[dep_airport.name] + [airports[i]['name'] for i in route[1:-1]] + [arr_airport.name],
+    projection="natural earth"
     )
-    
-    # Add a dashed line style
+
+    # Customize map style
     route_fig.update_traces(
         line=dict(dash="dash", width=2, color="blue"),
-        mode="lines+markers",
-        marker=dict(size=10, color=["red", "green"])  # Red for departure, Green for arrival
+        mode="lines+markers+text",  # Show markers and text labels
+        marker=dict(size=10, color=["red"] + ["blue"] * (len(route) - 2) + ["green"]),
+        textposition="top center"  # Adjust text placement
     )
 
     route_fig.update_layout(
         dragmode="pan",
-        geo=dict(
-            showland=True,
-        ),
+        geo=dict(showland=True),
         title=f"Flight Route from {dep_airport.name} to {arr_airport.name}"
     )
 
-    return route_validation_msg, route_details, route_fig
+    return route_info_content, route_fig
