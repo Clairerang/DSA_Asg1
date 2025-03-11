@@ -3,6 +3,7 @@ from collections import deque
 import plotly.express as px
 from dash import dcc, html, Output, Input, callback, register_page
 from data_loader import airport_db  # Import the global AirportDatabase object
+from datetime import datetime
 
 # Register Dash Page
 register_page(__name__, path='/route-view')
@@ -39,7 +40,7 @@ layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
     # html.H2("Route View - Flight Path Visualization", className="text-4xl font-bold text-gray-900 mb-6"),
 
     # Form Section
-    html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-white p-6 rounded-lg ", children=[
+    html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-white p-6 rounded-lg ", children=[
         
         # Departure Airport Selection
         html.Div(children=[
@@ -54,6 +55,40 @@ layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
             dcc.Dropdown(id='arrival-airport-dropdown', options=airport_options, placeholder="Select an arrival airport",
                 className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
         ]),
+
+        html.Div(className="flex flex-1 w-max space-x-4", children=[
+        
+        # Departure Date Picker
+        html.Div(children=[
+            html.Label("Departure Date:", className="font-bold text-gray-700"),
+            dcc.DatePickerSingle(
+                id='departure-date-picker',
+                placeholder="Select date",
+                className="border rounded-md shadow-sm bg-white focus:ring focus:ring-blue-200"
+            )
+        ]),
+
+        # Return Date Picker
+        html.Div(children=[
+            html.Label("Return Date:", className="font-bold text-gray-700"),
+            dcc.DatePickerSingle(
+                id='return-date-picker',
+                placeholder="Select date",
+                className="border rounded-md shadow-sm bg-white focus:ring focus:ring-blue-200"
+            )
+        ]),
+
+        # html.Div(children=[
+        #     html.Label("Trip Type:", className="font-bold text-gray-700"),
+        #     dcc.Checklist(
+        #         id='one-way-toggle',
+        #         options=[{'label': 'One-Way Flight', 'value': 'one_way'}],
+        #         value=[],
+        #         className="text-gray-900 font-medium mt-2"
+        #     )
+        # ]),
+    ]),
+
 
         # Filter options
         html.Div(children=[
@@ -111,10 +146,12 @@ def bfs_min_connections(airports, start, goal):
      Output('route-map', 'figure')],
     [Input('departure-airport-dropdown', 'value'),
      Input('arrival-airport-dropdown', 'value'),
+     Input('departure-date-picker', 'date'),  
+     Input('return-date-picker', 'date'),  
      Input('filter-dropdown', 'value'),
-     Input('map-projection-dropdown', 'value')]  # New input for map projection
+     Input('map-projection-dropdown', 'value')]  
 )
-def update_route_map(departure_iata, arrival_iata, filter_option, projection_type):
+def update_route_map(departure_iata, arrival_iata, depart_date, return_date, filter_option, projection_type):
     if not departure_iata or not arrival_iata:
         return "⚠️ Please select both departure and destination airports.", px.scatter_geo(projection=projection_type)
 
@@ -123,6 +160,22 @@ def update_route_map(departure_iata, arrival_iata, filter_option, projection_typ
 
     if not dep_airport or not arr_airport:
         return "Invalid airport selection", px.scatter_geo(projection=projection_type)
+    
+    # Format the dates (convert from string)
+    def format_date(date_str):
+        if date_str:
+            return datetime.strptime(date_str, "%Y-%m-%d").strftime("%B %d, %Y")  # E.g., "March 11, 2025"
+        return "Not Selected"
+
+    formatted_depart_date = format_date(depart_date)
+    formatted_return_date = format_date(return_date) if return_date else "One-way trip"
+
+    # ✅ Date validation: Ensure departure date is not after the return date
+    if formatted_depart_date and formatted_return_date and formatted_depart_date > formatted_return_date:
+        return html.Div([
+            html.H3("❌ Date Error", className="text-lg font-bold text-red-600"),
+            html.P("⚠️ The departure date cannot be later than the return date.", className="text-gray-700")
+        ], className="p-4 bg-red-100 border-l-4 border-red-500 rounded-md"), px.scatter_geo(projection=projection_type)
 
     # Find shortest path using BFS
     if filter_option == "shortest_path":
@@ -180,7 +233,7 @@ def update_route_map(departure_iata, arrival_iata, filter_option, projection_typ
     route_fig.update_layout(
         dragmode="pan",
         geo=dict(showland=True),
-        title=f"Flight Route from {dep_airport.name} to {arr_airport.name}"
+        title=f"Flight Route from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}"
     )
 
     return route_info_content, route_fig
