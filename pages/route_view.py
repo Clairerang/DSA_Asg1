@@ -23,6 +23,16 @@ extra_options = [
     {'label': "Shortest Path", 'value': "shortest_path"},
 ]
 
+# Available map projections for the dropdown
+map_projections = [
+    {"label": "Natural Earth", "value": "natural earth"},
+    {"label": "Equirectangular", "value": "equirectangular"},
+    {"label": "Orthographic", "value": "orthographic"},
+    {"label": "Mercator", "value": "mercator"},
+    {"label": "Azimuthal Equal Area", "value": "azimuthal equal area"},
+    {"label": "Robinson", "value": "robinson"}
+]
+
 # Layout
 layout = html.Div([
     html.H2("Route View - Flight Path Visualization", className="text-4xl font-bold text-black"),
@@ -38,6 +48,11 @@ layout = html.Div([
     # Filter options
     html.Label("Filter by: ", className="font-bold text-black mt-2 mb-1"),
     dcc.Dropdown(id='filter-dropdown', options=extra_options, placeholder="Filter by: "),
+
+    # Map Projection Selection
+    html.Label("Select Map View: ", className="font-bold text-black mt-2 mb-1"),
+    dcc.Dropdown(id='map-projection-dropdown', options=map_projections, 
+                 value="natural earth", clearable=False, placeholder="Select Map Projection"),
 
     # Combined Route Information
     html.Div(id='route-info', className="bg-gray-200 p-4 rounded-md my-4"),
@@ -75,17 +90,18 @@ def bfs_min_connections(airports, start, goal):
      Output('route-map', 'figure')],
     [Input('departure-airport-dropdown', 'value'),
      Input('arrival-airport-dropdown', 'value'),
-     Input('filter-dropdown', 'value')]
+     Input('filter-dropdown', 'value'),
+     Input('map-projection-dropdown', 'value')]  # New input for map projection
 )
-def update_route_map(departure_iata, arrival_iata, filter_option):
+def update_route_map(departure_iata, arrival_iata, filter_option, projection_type):
     if not departure_iata or not arrival_iata:
-        return "⚠️ Please select both departure and destination airports.", px.scatter_geo(projection="natural earth")
+        return "⚠️ Please select both departure and destination airports.", px.scatter_geo(projection=projection_type)
 
     dep_airport = airport_db.get_airport(departure_iata)
     arr_airport = airport_db.get_airport(arrival_iata)
 
     if not dep_airport or not arr_airport:
-        return "Invalid airport selection", px.scatter_geo(projection="natural earth")
+        return "Invalid airport selection", px.scatter_geo(projection=projection_type)
 
     # Find shortest path using BFS
     if filter_option == "shortest_path":
@@ -95,7 +111,7 @@ def update_route_map(departure_iata, arrival_iata, filter_option):
         route = [departure_iata, arrival_iata] if any(r['iata'] == arrival_iata for r in airports[departure_iata]['routes']) else None
 
     if not route:
-        return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection="natural earth")
+        return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection=projection_type)
 
     # Calculate total distance and stops
     total_distance = 0
@@ -124,20 +140,20 @@ def update_route_map(departure_iata, arrival_iata, filter_option):
         *route_details
     ], className="bg-gray-200 p-2 rounded-md my-3 ")
 
-    # Map visualization
+    # Map visualization with selected projection
     route_fig = px.line_geo(
-         lat=[dep_airport.latitude] + [airports[i]['latitude'] for i in route[1:-1]] + [arr_airport.latitude],
-    lon=[dep_airport.longitude] + [airports[i]['longitude'] for i in route[1:-1]] + [arr_airport.longitude],
-    text=[dep_airport.name] + [airports[i]['name'] for i in route[1:-1]] + [arr_airport.name],
-    projection="natural earth"
+        lat=[dep_airport.latitude] + [airports[i]['latitude'] for i in route[1:-1]] + [arr_airport.latitude],
+        lon=[dep_airport.longitude] + [airports[i]['longitude'] for i in route[1:-1]] + [arr_airport.longitude],
+        text=[dep_airport.name] + [airports[i]['name'] for i in route[1:-1]] + [arr_airport.name],
+        projection=projection_type  # Dynamic projection type
     )
 
     # Customize map style
     route_fig.update_traces(
         line=dict(dash="dash", width=2, color="blue"),
-        mode="lines+markers+text",  # Show markers and text labels
+        mode="lines+markers+text",
         marker=dict(size=10, color=["red"] + ["blue"] * (len(route) - 2) + ["green"]),
-        textposition="top center"  # Adjust text placement
+        textposition="top center"
     )
 
     route_fig.update_layout(
