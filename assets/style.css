@@ -10,6 +10,7 @@ h1, h2 {
 
 html, body, #root {
     height: 100%;
+    background-color: #05203c;
 }
 
 .container {
@@ -40,4 +41,8 @@ label {
 
 hr {
     margin: 20px 0;
+}
+
+.accent-blue{
+    background-color: #0362e3;
 }
