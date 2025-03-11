@@ -18,7 +18,7 @@ app.layout = html.Div(className="flex min-h-screen", children=[
     ]),
 
     # Main Content Area
-    html.Div(className="flex-1 p-10", children=[ 
+    html.Div(className="flex-1 p-5", children=[ 
         # Page Container for Routing
         page_container
     ])

@@ -34,33 +34,54 @@ map_projections = [
 ]
 
 # Layout
-layout = html.Div([
-    html.H2("Route View - Flight Path Visualization", className="text-4xl font-bold text-black"),
+layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
+    # Title
+    # html.H2("Route View - Flight Path Visualization", className="text-4xl font-bold text-gray-900 mb-6"),
 
-    # Departure Airport Selection
-    html.Label("Select Departure Airport:", className="font-bold text-black mt-2 mb-1"),
-    dcc.Dropdown(id='departure-airport-dropdown', options=airport_options, placeholder="Select a departure airport"),
+    # Form Section
+    html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-white p-6 rounded-lg ", children=[
+        
+        # Departure Airport Selection
+        html.Div(children=[
+            html.Label("Select Departure Airport:", className="font-bold text-gray-700"),
+            dcc.Dropdown(id='departure-airport-dropdown', options=airport_options, placeholder="Select a departure airport",
+                className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
+        ]),
 
-    # Arrival Airport Selection
-    html.Label("Select Arrival Airport:", className="font-bold text-black mt-2 mb-1"),
-    dcc.Dropdown(id='arrival-airport-dropdown', options=airport_options, placeholder="Select an arrival airport"),
+        # Arrival Airport Selection
+        html.Div(children=[
+            html.Label("Select Arrival Airport:", className="font-bold text-gray-700"),
+            dcc.Dropdown(id='arrival-airport-dropdown', options=airport_options, placeholder="Select an arrival airport",
+                className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
+        ]),
 
-    # Filter options
-    html.Label("Filter by: ", className="font-bold text-black mt-2 mb-1"),
-    dcc.Dropdown(id='filter-dropdown', options=extra_options, placeholder="Filter by: "),
+        # Filter options
+        html.Div(children=[
+            html.Label("Filter by:", className="font-bold text-gray-700"),
+            dcc.Dropdown(id='filter-dropdown', options=extra_options, placeholder="Filter by",
+                className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
+        ]),
 
-    # Map Projection Selection
-    html.Label("Select Map View: ", className="font-bold text-black mt-2 mb-1"),
-    dcc.Dropdown(id='map-projection-dropdown', options=map_projections, 
-                 value="natural earth", clearable=False, placeholder="Select Map Projection"),
+        # Map Projection Selection
+        html.Div(children=[
+            html.Label("Select Map View:", className="font-bold text-gray-700"),
+            dcc.Dropdown(id='map-projection-dropdown', options=map_projections, 
+                value="natural earth", clearable=False, placeholder="Select Map Projection",
+                className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
+        ]),
+    ]),
+
+    # Route Validation Message
+    # html.Div(id='route-validation', className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md my-4"),
 
     # Combined Route Information
-    html.Div(id='route-info', className="bg-gray-200 p-4 rounded-md my-4"),
+    html.Div(id='route-info', className="bg-white p-5 rounded-lg "),
 
-    # Map Visualization
-    dcc.Graph(id='route-map', className="rounded-md",
-        config={'scrollZoom': True, 'displayModeBar': False},
-    )
+    # Full-Width Map Visualization
+    html.Div(className="w-full h-screen bg-white rounded-lg  overflow-hidden", children=[
+        dcc.Graph(id='route-map', className="w-full h-full", 
+            config={'scrollZoom': True, 'displayModeBar': False})
+    ])
 ])
 
 # BFS Algorithm to find minimum layovers
@@ -138,7 +159,7 @@ def update_route_map(departure_iata, arrival_iata, filter_option, projection_typ
         html.P(f"💰 Estimated Price: ${estimated_price}", className="font-semibold"),
         html.H4("🛫 Flight Route Details", className="font-bold mt-4"),
         *route_details
-    ], className="bg-gray-200 p-2 rounded-md my-3 ")
+    ], className=" p-2 rounded-md my-3 ")
 
     # Map visualization with selected projection
     route_fig = px.line_geo(
