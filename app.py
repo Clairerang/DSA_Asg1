@@ -1,3 +1,5 @@
+#!.\.venv\Scripts\python.exe
+
 import dash
 from dash import html, dcc, page_container, callback, Input, Output
 
