@@ -101,9 +101,9 @@ layout = html.Div(className="min-h-screen flex flex-col md:gap-3 p-4 ", children
         ]),
 
         # Search Button (Full-Width on Small Screens)
-        html.Div(className="flex flex-1 justify-center sm:justify-start", children=[
+        html.Div(className="flex flex-1 justify-center sm:justify-start ", children=[
             html.Button("Search Route", id="search-button",
-                        className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg mt-4 w-full sm:w-auto hover:bg-blue-700 transition"),
+                        className="bg-blue-600 text-white font-bold px-4 py-2  rounded-lg w-full mt-4 sm:w-auto hover:bg-blue-700 transition"),
         ]),
     ]),
 
@@ -167,7 +167,7 @@ def update_route_map(n_clicks, departure_iata, arrival_iata, depart_date, return
     route_fig = px.line_geo(
         lat=[dep_airport.latitude, arr_airport.latitude],
         lon=[dep_airport.longitude, arr_airport.longitude],
-        text=[dep_airport.name, arr_airport.name],
+        destination=[dep_airport.name, arr_airport.name],
         projection=projection_type
     )
 
