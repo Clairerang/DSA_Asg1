@@ -173,7 +173,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         return "Not Selected"
 
     formatted_depart_date = format_date(depart_date)
-    formatted_return_date = format_date(return_date) if return_date else ""
+    formatted_return_date = format_date(return_date) if return_date else "One-way trip"
 
     # ✅ Date validation: Ensure departure date is not after the return date
     if formatted_depart_date and formatted_return_date and formatted_depart_date > formatted_return_date:
@@ -235,10 +235,17 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         textposition="top center"
     )
 
+    def get_route_title(formatted_depart_date, formatted_return_date):
+        if formatted_return_date in ["One-way trip", "Not Selected"]:
+            route_title = f"Flight Route from {dep_airport.name} to {arr_airport.name} on a one-way trip"
+        else:
+            route_title = f"Flight Route from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}"
+        return route_title
+
     route_fig.update_layout(
         dragmode="pan",
         geo=dict(showland=True),
-        title=f"Flight Route from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}"
+        title= get_route_title(formatted_depart_date, formatted_return_date)
     )
 
     return route_info_content, route_fig
