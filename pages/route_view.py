@@ -36,6 +36,7 @@ map_projections = [
 
 # Layout
 layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
+    
     # Title
     html.H2("Flight Path Visualization", className="text-4xl font-bold text-white my-3"),
 
@@ -62,8 +63,10 @@ layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
         html.Div(children=[
             html.Label("Departure Date:", className="font-bold text-gray-700"),
             dcc.DatePickerSingle(
+                display_format="DD/MM/YYYY",
                 id='departure-date-picker',
                 placeholder="Select date",
+                clearable=True,
                 className="border rounded-md shadow-sm bg-white focus:ring focus:ring-blue-200"
             )
         ]),
@@ -72,8 +75,10 @@ layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
         html.Div(children=[
             html.Label("Return Date:", className="font-bold text-gray-700"),
             dcc.DatePickerSingle(
+                display_format="DD/MM/YYYY",
                 id='return-date-picker',
                 placeholder="Select date",
+                clearable=True,
                 className="border rounded-md shadow-sm bg-white focus:ring focus:ring-blue-200"
             )
         ]),
@@ -168,7 +173,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         return "Not Selected"
 
     formatted_depart_date = format_date(depart_date)
-    formatted_return_date = format_date(return_date) if return_date else "One-way trip"
+    formatted_return_date = format_date(return_date) if return_date else ""
 
     # ✅ Date validation: Ensure departure date is not after the return date
     if formatted_depart_date and formatted_return_date and formatted_depart_date > formatted_return_date:
