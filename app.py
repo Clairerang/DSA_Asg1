@@ -11,14 +11,14 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets, use_pages=T
 app.layout = html.Div(className="flex min-h-screen", children=[
     
     # Sidebar Panel
-    html.Div(className="w-64 text-white px-0 p-3", children=[
+    html.Div(className="w-64 text-white px-0 p-3 md:flex flex-col hidden", children=[
         html.H2("Flight Routing System", className="text-xl mx-3 font-bold text-start text-white "),
         html.Hr(className="mx-0"),
         html.Div(id="sidebar-links", className="flex flex-col gap-2"),
     ]),
 
     # Main Content Area
-    html.Div(className="flex-1 px-5", children=[ 
+    html.Div(className="flex-1 md:px-5", children=[ 
         # Page Container for Routing
         page_container
     ])
