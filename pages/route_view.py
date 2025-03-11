@@ -1,25 +1,23 @@
-import json
+from datetime import datetime, date
 from collections import deque
 import plotly.express as px
 from dash import dcc, html, Output, Input, callback, register_page
 from data_loader import airport_db  # Import the global AirportDatabase object
-from datetime import datetime
+from algorithms import bfs_min_connections
+
+todayDate = date.today() # For date selection
 
 # Register Dash Page
 register_page(__name__, path='/route-view')
 
-# Load airport data
-with open('airline_routes.json', 'r') as file:
-    airports = json.load(file)
-
 # Generate dropdown options from airport database
 airport_options = [
-    {'label': f"{airport['name']} ({iata})", 'value': iata}
-    for iata, airport in airports.items()
+    {'label': f"{airport.name} ({airport.iata})", 'value': airport.iata}
+    for airport in sorted(airport_db.airports.values(), key=lambda a: a.name)
 ]
 
 # Define filter options
-extra_options = [
+filter_options = [
     {'label': "Price (Cheapest)", 'value': "price_cheapest"},
     {'label': "Shortest Path", 'value': "shortest_path"},
 ]
@@ -33,6 +31,7 @@ map_projections = [
     {"label": "Azimuthal Equal Area", "value": "azimuthal equal area"},
     {"label": "Robinson", "value": "robinson"}
 ]
+
 
 # Layout
 layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
@@ -67,6 +66,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
                 id='departure-date-picker',
                 placeholder="Select date",
                 clearable=True,
+                min_date_allowed=todayDate,
                 className="border rounded-md shadow-sm bg-white focus:ring focus:ring-blue-200"
             )
         ]),
@@ -79,6 +79,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
                 id='return-date-picker',
                 placeholder="Select date",
                 clearable=True,
+                min_date_allowed=todayDate,
                 className="border rounded-md shadow-sm bg-white focus:ring focus:ring-blue-200"
             )
         ]),
@@ -89,11 +90,10 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
         #     html.Button("Search Route", id="search-button", className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg mt-4 hover:bg-blue-700 transition"),
         # ],className="flex fl"),
 
-
         # Filter options
         html.Div(children=[
             html.Label("Filter by:", className="font-bold text-gray-700"),
-            dcc.Dropdown(id='filter-dropdown', options=extra_options, placeholder="Filter by",
+            dcc.Dropdown(id='filter-dropdown', options=filter_options, placeholder="Filter by",
                 className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
         ]),
 
@@ -119,27 +119,6 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
     ])
 ])
 
-# BFS Algorithm to find minimum layovers
-def bfs_min_connections(airports, start, goal):
-    queue = deque([(start, [start])])
-    visited = set()
-
-    while queue:
-        current, path = queue.popleft()
-
-        if current == goal:
-            return path
-
-        visited.add(current)
-
-        for route in airports[current].get('routes', []):
-            neighbor = route['iata']
-            if neighbor in airports and neighbor not in visited:
-                visited.add(neighbor)
-                queue.append((neighbor, path + [neighbor]))
-
-    return None
-
 # Callback to compute the route
 @callback(
     [Output('route-info', 'children'),
@@ -164,7 +143,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
     # Format the dates (convert from string)
     def format_date(date_str):
         if date_str:
-            return datetime.strptime(date_str, "%Y-%m-%d").strftime("%B %d, %Y")  # E.g., "March 11, 2025"
+            return datetime.strptime(date_str, "%Y-%m-%d").strftime("%d %B %Y") 
         return "Not Selected"
 
     formatted_depart_date = format_date(depart_date)
@@ -179,10 +158,14 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
     # Find shortest path using BFS
     if filter_option == "shortest_path":
-        route = bfs_min_connections(airports, departure_iata, arrival_iata)
+        route = bfs_min_connections(airport_db, departure_iata, arrival_iata)
     else:
         # If no filter or cheapest price selected, find direct shortest route
-        route = [departure_iata, arrival_iata] if any(r['iata'] == arrival_iata for r in airports[departure_iata]['routes']) else None
+        departure_airport = airport_db.get_airport(departure_iata)
+        if departure_airport and any(route.iata == arrival_iata for route in departure_airport.routes):
+            route = [departure_iata, arrival_iata]  # Direct flight exists
+        else:
+            route = None  # No direct route available
 
     if not route:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection=projection_type)
@@ -192,14 +175,28 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
     route_details = []
 
     for i in range(len(route) - 1):
-        segment_start, segment_end = route[i], route[i + 1]
-        route_info = next((r for r in airports[segment_start]['routes'] if r['iata'] == segment_end), None)
+        segment_start_iata, segment_end_iata = route[i], route[i + 1]
+
+        # Fetch Airport objects
+        segment_start_airport = airport_db.get_airport(segment_start_iata)
+        segment_end_airport = airport_db.get_airport(segment_end_iata)
+
+        if not segment_start_airport or not segment_end_airport:
+            continue  # Skip invalid airports
+
+        # Find the route from segment_start to segment_end
+        route_info = next((r for r in segment_start_airport.routes if r.iata == segment_end_iata), None)
 
         if route_info:
-            carrier_names = ', '.join(carrier['name'] for carrier in route_info.get('carriers', [])) or "Unknown Airline"
-            distance = route_info['km']
+            # Get airline names
+            carrier_names = ', '.join(carrier.name for carrier in route_info.carriers) or "Unknown Airline"
+            distance = route_info.km
             total_distance += distance
-            route_details.append(html.P(f"✈️ {segment_start} → {segment_end} | {distance} km | Airline(s): {carrier_names}", className="text-gray-700"))
+
+            route_details.append(html.P(
+                f"✈️ {segment_start_airport.name} ({segment_start_iata}) → {segment_end_airport.name} ({segment_end_iata}) | {distance} km | Airline(s): {carrier_names}",
+                className="text-gray-700"
+            ))
 
     # Calculate estimated price (Assume $0.10 per km)
     estimated_price = round(total_distance * 0.10, 2)
@@ -216,9 +213,9 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
     # Map visualization with selected projection
     route_fig = px.line_geo(
-        lat=[dep_airport.latitude] + [airports[i]['latitude'] for i in route[1:-1]] + [arr_airport.latitude],
-        lon=[dep_airport.longitude] + [airports[i]['longitude'] for i in route[1:-1]] + [arr_airport.longitude],
-        text=[dep_airport.name] + [airports[i]['name'] for i in route[1:-1]] + [arr_airport.name],
+        lat=[dep_airport.latitude] + [airport_db.get_airport(i).latitude for i in route[1:-1]] + [arr_airport.latitude],
+        lon=[dep_airport.longitude] + [airport_db.get_airport(i).longitude for i in route[1:-1]] + [arr_airport.longitude],
+        text=[dep_airport.name] + [airport_db.get_airport(i).name for i in route[1:-1]] + [arr_airport.name],
         projection=projection_type  # Dynamic projection type
     )
 
@@ -229,7 +226,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         marker=dict(size=10, color=["red"] + ["blue"] * (len(route) - 2) + ["green"]),
         textposition="top center"
     )
-
+    
     def get_route_title(formatted_depart_date, formatted_return_date):
         if formatted_return_date in ["One-way trip", "Not Selected"]:
             route_title = f"Flight Route from {dep_airport.name} to {arr_airport.name} on a one-way trip"
