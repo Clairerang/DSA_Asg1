@@ -61,7 +61,7 @@ def main():
 
     price_per_km = 0.20  
 
-    while True: # Loop for continuous input
+    while True: 
         origin_iata = get_airport_code("Enter departure airport IATA code: ")
         destination_iata = get_airport_code("Enter destination airport IATA code: ")
 
@@ -72,10 +72,10 @@ def main():
         else:
             print(f"Could not calculate price for the route from {origin_iata} to {destination_iata}.")
 
-        # Ask if the user wants to calculate another price
+        
         another_calculation = input("Calculate another price? (y/n): ").strip().lower()
         if another_calculation != 'y':
-            break  # Exit the loop if the user doesn't enter 'y'
+            break  
 
 if __name__ == "__main__":
     main()
