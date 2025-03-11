@@ -59,7 +59,7 @@ def main():
     if not airport_data:
         return  
 
-    price_per_km = 0.25
+    price_per_km = 0.20  
 
     while True: 
         origin_iata = get_airport_code("Enter departure airport IATA code: ")
