@@ -167,7 +167,7 @@ def update_route_map(n_clicks, departure_iata, arrival_iata, depart_date, return
     route_fig = px.line_geo(
         lat=[dep_airport.latitude, arr_airport.latitude],
         lon=[dep_airport.longitude, arr_airport.longitude],
-        destination=[dep_airport.name, arr_airport.name],
+        text=[dep_airport.name, arr_airport.name],
         projection=projection_type
     )
 
