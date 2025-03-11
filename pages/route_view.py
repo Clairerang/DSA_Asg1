@@ -140,17 +140,22 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
     if not dep_airport or not arr_airport:
         return "Invalid airport selection", px.scatter_geo(projection=projection_type)
     
-    # Format the dates (convert from string)
-    def format_date(date_str):
+    def toDateTime(date_str):
         if date_str:
-            return datetime.strptime(date_str, "%Y-%m-%d").strftime("%d %B %Y") 
+            return datetime.strptime(date_str, "%Y-%m-%d")
+        return None
+    
+    # Format the dates (convert from string)
+    def format_date(date):
+        if date:
+            return date.strftime("%d %B %Y") 
         return "Not Selected"
 
-    formatted_depart_date = format_date(depart_date)
-    formatted_return_date = format_date(return_date) if return_date else "One-way trip"
+    formatted_depart_date = format_date(toDateTime(depart_date))
+    formatted_return_date = format_date(toDateTime(return_date)) if return_date else "One-way trip"
 
     # ✅ Date validation: Ensure departure date is not after the return date
-    if formatted_depart_date and formatted_return_date and formatted_depart_date > formatted_return_date:
+    if toDateTime(depart_date) and toDateTime(return_date) and toDateTime(depart_date) > toDateTime(return_date):
         return html.Div([
             html.H3("❌ Date Error", className="text-lg font-bold text-red-600"),
             html.P("⚠️ The departure date cannot be later than the return date.", className="text-gray-700")
