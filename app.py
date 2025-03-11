@@ -36,10 +36,10 @@ def update_active_link(pathname):
             "Route View", href="/route-view",
             className=f"block py-3 px-2 mx-2 rounded-md {'accent-blue text-white' if pathname == '/route-view' else 'hover:bg-gray-100 hover:text-black transition-colors duration-300'}"
         ),
-        dcc.Link(
-            "Map View", href="/map-view",
-            className=f"block py-3 px-2 mx-2 rounded-md {'accent-blue text-white' if pathname == '/map-view' else 'hover:bg-gray-100 hover:text-black transition-colors duration-300'}"
-        ),
+        # dcc.Link(
+        #     "Map View", href="/map-view",
+        #     className=f"block py-3 px-2 mx-2 rounded-md {'accent-blue text-white' if pathname == '/map-view' else 'hover:bg-gray-100 hover:text-black transition-colors duration-300'}"
+        # ),
         dcc.Link(
             "Table View", href="/table-view",
             className=f"block py-3 px-2 mx-2 rounded-md {'accent-blue text-white' if pathname == '/table-view' else 'hover:bg-gray-100 hover:text-black transition-colors duration-300'}"

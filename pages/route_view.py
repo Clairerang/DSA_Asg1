@@ -37,7 +37,7 @@ map_projections = [
 # Layout
 layout = html.Div(className="min-h-screen gap-3 flex flex-col", children=[
     # Title
-    # html.H2("Route View - Flight Path Visualization", className="text-4xl font-bold text-gray-900 mb-6"),
+    html.H2("Flight Path Visualization", className="text-4xl font-bold text-white my-3"),
 
     # Form Section
     html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-white p-6 rounded-lg ", children=[

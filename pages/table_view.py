@@ -9,8 +9,8 @@ airport_options = [
 ]
 
 layout = html.Div([
-    html.H2("Table View - Flight Map Routing", className="text-4xl font-bold text-black mb-4"),
-    html.Label("Select an Airport:", className="block text-lg font-medium text-gray-700 mb-2"),
+    html.H2("Table View - Flight Map Routing", className="text-4xl text-white font-bold my-3"),
+    html.Label("Select an Airport:", className="block text-lg font-medium text-gray-100 mb-2"),
     dcc.Dropdown(id='airport-dropdown', options=airport_options, placeholder="Select an airport", className="mb-4 p-2 border border-gray-300 rounded-md"),
 
     html.Div(id='airport-info-table', className="mt-4"),
