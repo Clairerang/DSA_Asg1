@@ -33,11 +33,18 @@ class Route:
 
 class Carrier:
     def __init__(self, data):
-        self.iata = data.get("iata")
-        self.name = data.get("name")
+        self.iata = data.get("iata")  # Airline IATA Code
+        self.name = data.get("name")  # Airline Name
+        self.departure_date = data.get("departure_date")  # Departure Date
+        self.departure_time = data.get("departure_time")  # Departure Time
+        self.arrival_date = data.get("arrival_date")  # Arrival Date
+        self.arrival_time = data.get("arrival_time")  # Arrival Time
+        self.departure_timezone = data.get("departure_timezone")  # Timezone of Departure
+        self.arrival_timezone = data.get("arrival_timezone")  # Timezone of Arrival
 
     def __repr__(self):
-        return f"Carrier({self.iata}, {self.name})"
+        return (f"Carrier({self.iata}, {self.name}, Departure: {self.departure_date} {self.departure_time}, "
+                f"Arrival: {self.arrival_date} {self.arrival_time})")
 
 
 class AirportDatabase:
@@ -75,14 +82,23 @@ def read_json_file(file_path):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return None
-    
+
 if __name__ == "__main__":
     file_path = 'airline_routes.json'  # Replace with the actual path to your JSON file
 
     db = AirportDatabase(read_json_file(file_path))
-    aad_airport = db.get_airport("AAD")
-    # Print the airport and its details
-    print(aad_airport)
-
-    # Print its routes
-    print(aad_airport.routes)
+    
+    # Example: Fetch an airport and print details
+    airport_code = "AAA"
+    airport = db.get_airport(airport_code)
+    
+    if airport:
+        print(f"Airport Details: {airport}")
+        
+        # Print all routes
+        for route in airport.routes:
+            print(f"Route to {route.iata}: {route.km} km, {route.min} min")
+            
+            # Print all carriers for the route
+            for carrier in route.carriers:
+                print(f"  - {carrier}")
