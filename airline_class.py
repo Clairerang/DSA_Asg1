@@ -41,6 +41,7 @@ class Carrier:
         self.arrival_time = data.get("arrival_time")  # Arrival Time
         self.departure_timezone = data.get("departure_timezone")  # Timezone of Departure
         self.arrival_timezone = data.get("arrival_timezone")  # Timezone of Arrival
+        self.seats_remaining = int(data.get("seats_remaining", 0))  # Number of available seats
 
     def __repr__(self):
         return (f"Carrier({self.iata}, {self.name}, Departure: {self.departure_date} {self.departure_time}, "
