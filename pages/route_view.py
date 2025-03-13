@@ -3,6 +3,7 @@ import plotly.express as px
 from dash import dcc, html, Output, Input, callback, register_page
 from data_loader import airport_db  # Import the global AirportDatabase object
 from algorithms import bfs_min_connections, yen_k_shortest_paths
+from cal_price import get_price_for_route
 
 todayDate = date.today() # For date selection
 
@@ -177,7 +178,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
     if not route:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection=projection_type)
-    
+
     def filter_routes_by_date(route, selected_depart_date, selected_return_date):
         """
         Filters the available routes based on departure date.
@@ -205,6 +206,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
     def calculate_route_details(route, airport_db):
         total_distance = 0
+        total_est_price = 0
         route_details = []
         filtered_route = []
 
@@ -227,13 +229,14 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
                 if not available_carriers:
                     continue  # Skip routes with no available flights on selected date
                 
-                
-
                 # Get airline names
                 carrier_names = ', '.join(f"{carrier.name} | Seat(s): {carrier.seats_remaining}" for carrier in available_carriers) or "Unknown Airline"
                 
                 distance = route_info.km
                 total_distance += distance
+
+                price = get_price_for_route(segment_start_airport, segment_end_airport)
+                total_est_price += price
 
                 route_details.append(html.P(
                     f"✈️ {segment_start_airport.name} ({segment_start_iata}) → {segment_end_airport.name} ({segment_end_iata}) | "
@@ -243,16 +246,13 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
                 filtered_route.append(route[i])
 
-
-        # Calculate estimated price (Assume $0.10 per km)
-        estimated_price = round(total_distance * 0.10, 2)
-
-        return total_distance, route_details, estimated_price, filtered_route
+        return total_distance, route_details, total_est_price, filtered_route
 
     total_distance, route_details, estimated_price, filtered_route = calculate_route_details(route,airport_db)
     
     if not route_details:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}.", px.scatter_geo(projection=projection_type)
+
     
     route_status = "✅ Route Found" if len(route_details) == len(route) - 1 else "⚠️ Partial Route Found"
     layovers = len(route) - 1 if len(route_details) == len(route) - 1 else len(route_details)
