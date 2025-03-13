@@ -1,8 +1,10 @@
 from collections import deque
+from data_loader import airport_db  # Import the global AirportDatabase object
 
 def bfs_min_connections(airport_db, start_iata, goal_iata):
     """
-    Finds the shortest flight route (minimum layovers) between two airports using BFS.
+    Finds the shortest flight route (minimum layovers) between two airports using BFS,
+    ensuring that only routes with available carriers are considered.
 
     Args:
         airport_db (AirportDatabase): The airport database containing all airports.
@@ -36,9 +38,13 @@ def bfs_min_connections(airport_db, start_iata, goal_iata):
         # Explore all direct flight routes from the current airport
         for route in current_airport.routes:
             next_airport = airport_db.get_airport(route.iata)
-            
-            if next_airport and next_airport.iata not in visited:
+
+            # Ensure the route has at least one carrier with flights available
+            if next_airport and next_airport.iata not in visited and any(route.carriers):
                 visited.add(next_airport.iata)
                 queue.append((next_airport, path + [next_airport.iata]))
 
     return None  # No route found
+
+if __name__ == "__main__":
+    print(bfs_min_connections(airport_db, "SIN", "GLA"))
