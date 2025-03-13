@@ -298,7 +298,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
         dbc.Accordion([
             dbc.AccordionItem([ *route_details
-            ], title="Flight Details")
+            ], title="Route Details")
         ]),
         ])
     ], className="rounded-lg p-3")
