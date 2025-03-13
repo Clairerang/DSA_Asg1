@@ -165,7 +165,8 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         route = bfs_min_connections(departure_iata, arrival_iata)
     elif filter_option == "shortest_path":
         route = yen_k_shortest_paths(departure_iata, arrival_iata)
-        route = route[0]
+        if route:
+            route = route[0]
     # else:
     #     # If no filter or cheapest price selected, find direct shortest route
     #     departure_airport = airport_db.get_airport(departure_iata)
