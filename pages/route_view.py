@@ -1,5 +1,4 @@
-from datetime import datetime, date
-from collections import deque
+from datetime import datetime, date, timedelta
 import plotly.express as px
 from dash import dcc, html, Output, Input, callback, register_page
 from data_loader import airport_db  # Import the global AirportDatabase object
@@ -13,7 +12,7 @@ register_page(__name__, path='/route-view')
 # Generate dropdown options from airport database
 airport_options = [
     {'label': f"{airport.name} ({airport.iata})", 'value': airport.iata}
-    for airport in sorted(airport_db.airports.values(), key=lambda a: a.name)
+    for airport in sorted(airport_db.airports.values(), key=lambda a: a.iata)
 ]
 
 # Define filter options
@@ -66,7 +65,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
                 id='departure-date-picker',
                 placeholder="Select date",
                 clearable=True,
-                min_date_allowed=todayDate,
+                #min_date_allowed=todayDate,
                 className="border rounded-md shadow-sm bg-white focus:ring focus:ring-blue-200"
             )
         ]),
@@ -79,7 +78,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
                 id='return-date-picker',
                 placeholder="Select date",
                 clearable=True,
-                min_date_allowed=todayDate,
+                #min_date_allowed=todayDate,
                 className="border rounded-md shadow-sm bg-white focus:ring focus:ring-blue-200"
             )
         ]),
@@ -116,7 +115,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
     html.Div(className="w-full md:h-screen h-full bg-white rounded-lg  overflow-hidden", children=[
         dcc.Graph(id='route-map', className="w-full h-full whiteline-pre", 
             config={'scrollZoom': True, 'displayModeBar': False})
-    ])
+    ]),
 ])
 
 # Callback to compute the route
@@ -174,47 +173,95 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
     if not route:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection=projection_type)
+    
+    def filter_routes_by_date(route, selected_depart_date, selected_return_date):
+        """
+        Filters the available routes based on departure date.
+        
+        Args:
+            route (Route): The route object containing carriers.
+            selected_depart_date (str): The selected departure date (YYYY-MM-DD).
+            selected_return_date (str): The selected return date (YYYY-MM-DD) or None.
 
-    # Calculate total distance and stops
-    total_distance = 0
-    route_details = []
+        Returns:
+            list: A filtered list of available carriers for the selected date.
+        """
 
-    for i in range(len(route) - 1):
-        segment_start_iata, segment_end_iata = route[i], route[i + 1]
+        if not selected_depart_date and not selected_return_date:
+            return route.carriers  # Return all carriers in this route
+        
+        available_carriers = []
+        
+        for carrier in route.carriers:
+            if carrier.departure_date == selected_depart_date:
+                if selected_return_date is None or carrier.arrival_date == selected_return_date:
+                    available_carriers.append(carrier)
 
-        # Fetch Airport objects
-        segment_start_airport = airport_db.get_airport(segment_start_iata)
-        segment_end_airport = airport_db.get_airport(segment_end_iata)
+        return available_carriers
 
-        if not segment_start_airport or not segment_end_airport:
-            continue  # Skip invalid airports
+    def calculate_route_details(route, airport_db):
+        total_distance = 0
+        route_details = []
+        filtered_route = []
 
-        # Find the route from segment_start to segment_end
-        route_info = next((r for r in segment_start_airport.routes if r.iata == segment_end_iata), None)
+        for i in range(len(route) - 1):
+            segment_start_iata, segment_end_iata = route[i], route[i + 1]
 
-        if route_info:
-            # Get airline names
-            carrier_names = ', '.join(carrier.name for carrier in route_info.carriers) or "Unknown Airline"
-            distance = route_info.km
-            total_distance += distance
+            # Fetch Airport objects
+            segment_start_airport = airport_db.get_airport(segment_start_iata)
+            segment_end_airport = airport_db.get_airport(segment_end_iata)
 
-            route_details.append(html.P(
-                f"✈️ {segment_start_airport.name} ({segment_start_iata}) → {segment_end_airport.name} ({segment_end_iata}) | {distance} km | Airline(s): {carrier_names}",
-                className="text-gray-700"
-            ))
+            if not segment_start_airport or not segment_end_airport:
+                continue  # Skip invalid airports
 
-    # Calculate estimated price (Assume $0.10 per km)
-    estimated_price = round(total_distance * 0.10, 2)
+            # Find the route from segment_start to segment_end
+            route_info = next((r for r in segment_start_airport.routes if r.iata == segment_end_iata), None)
 
-    # Combined Route Information
+            if route_info:
+                available_carriers = filter_routes_by_date(route_info, depart_date, return_date)
+
+                if not available_carriers:
+                    continue  # Skip routes with no available flights on selected date
+                
+                
+
+                # Get airline names
+                carrier_names = ', '.join(f"{carrier.name} | Seat(s): {carrier.seats_remaining}" for carrier in available_carriers) or "Unknown Airline"
+                
+                distance = route_info.km
+                total_distance += distance
+
+                route_details.append(html.P(
+                    f"✈️ {segment_start_airport.name} ({segment_start_iata}) → {segment_end_airport.name} ({segment_end_iata}) | "
+                    f"{distance} km | Airline(s): {carrier_names}",
+                    className="text-gray-700"
+                ))
+
+                filtered_route.append(route[i])
+
+
+        # Calculate estimated price (Assume $0.10 per km)
+        estimated_price = round(total_distance * 0.10, 2)
+
+        return total_distance, route_details, estimated_price, filtered_route
+
+    total_distance, route_details, estimated_price, filtered_route = calculate_route_details(route,airport_db)
+    
+    if not route_details:
+        return f"❌ No route available from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}.", px.scatter_geo(projection=projection_type)
+    
+    route_status = "✅ Route Found" if len(route_details) == len(route) - 1 else "✅ Partial Route Found"
+    layovers = len(route) - 1 if len(route_details) == len(route) - 1 else len(route_details)
+
     route_info_content = html.Div([
-        html.H3("✅ Route Found", className="text-lg font-bold text-green-600"),
+        html.H3(route_status, className="text-lg font-bold text-green-600"),
         html.P(f"📍 Total Distance: {total_distance} km", className="font-semibold"),
-        html.P(f"✈️ Number of Layovers: {len(route) - 1}", className="font-semibold"),
-        html.P(f"💰 Estimated Price: ${estimated_price}", className="font-semibold"),
+        html.P(f"✈️ Number of Layovers: {layovers}", className="font-semibold"),
+        html.P(f"💰 Estimated Price: ${estimated_price:.2f}", className="font-semibold"),
         html.H4("🛫 Flight Route Details", className="font-bold mt-4"),
         *route_details
-    ], className=" p-2 rounded-md my-3 ")
+    ], className="p-2 rounded-md my-3")
+
 
     # Map visualization with selected projection
     route_fig = px.line_geo(

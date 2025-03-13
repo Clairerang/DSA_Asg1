@@ -47,4 +47,4 @@ def bfs_min_connections(airport_db, start_iata, goal_iata):
     return None  # No route found
 
 if __name__ == "__main__":
-    print(bfs_min_connections(airport_db, "SIN", "GLA"))
+    print(bfs_min_connections(airport_db, "KIE", "KHY"))
