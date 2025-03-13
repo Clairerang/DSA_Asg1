@@ -1,10 +1,11 @@
 #!.\.venv\Scripts\python.exe
 
 import dash
-from dash import html, dcc, page_container, callback, Input, Output
+from dash import html, dcc, page_container, Input, Output
+import dash_bootstrap_components as dbc
 
 # Tailwind CSS for styling
-external_stylesheets = ["https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"]
+external_stylesheets = ["https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css", dbc.themes.BOOTSTRAP]
 
 # Initialize Dash app with pages enabled
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, use_pages=True)
@@ -14,7 +15,7 @@ app.layout = html.Div(className="flex min-h-screen", children=[
     
     # Sidebar Panel
     html.Div(className="w-64 text-white px-0 p-3 md:flex flex-col hidden", children=[
-        html.H2("Flight Routing System", className="text-xl mx-3 font-bold text-start text-white "),
+        html.H2("Sky Wings", className="text-xl mx-3 font-bold text-start text-white "),
         html.Hr(className="mx-0"),
         html.Div(id="sidebar-links", className="flex flex-col gap-2"),
     ]),
@@ -36,7 +37,7 @@ def update_active_link(pathname):
     return [
         dcc.Link(
             "Route View", href="/route-view",
-            className=f"block py-3 px-2 mx-2 rounded-md {'accent-blue text-white' if pathname == '/route-view' else 'hover:bg-gray-100 hover:text-black transition-colors duration-300'}"
+            className=f"block py-3 px-2 mx-2 text-white no-underline rounded-md {'accent-blue text-white' if pathname == '/route-view' else 'hover:bg-gray-50 no-underline hover:text-dark transition-colors duration-300'}"
         ),
         # dcc.Link(
         #     "Map View", href="/map-view",
@@ -44,7 +45,7 @@ def update_active_link(pathname):
         # ),
         dcc.Link(
             "Table View", href="/table-view",
-            className=f"block py-3 px-2 mx-2 rounded-md {'accent-blue text-white' if pathname == '/table-view' else 'hover:bg-gray-100 hover:text-black transition-colors duration-300'}"
+            className=f"block py-3 px-2 mx-2 text-white no-underline rounded-md {'accent-blue text-white' if pathname == '/table-view' else 'hover:bg-gray-50 no-underline hover:text-dark transition-colors duration-300'}"
         ),
     ]
 

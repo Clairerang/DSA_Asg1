@@ -4,6 +4,7 @@ from dash import dcc, html, Output, Input, callback, register_page
 from data_loader import airport_db  # Import the global AirportDatabase object
 from algorithms import bfs_min_connections, yen_k_shortest_paths
 from cal_price import get_price_for_route
+import dash_bootstrap_components as dbc
 
 todayDate = date.today() # For date selection
 
@@ -40,18 +41,18 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
     html.H2("Flight Path Visualization", className="text-2xl font-bold text-white my-3"),
 
     # Form Section
-    html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 p-2 gap-4 bg-white p-6 rounded-lg ", children=[
+    html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-9 pt-8 px-8 bg-white rounded-lg ", children=[
         
         # Departure Airport Selection
         html.Div(children=[
-            html.Label("Select Departure Airport:", className="font-bold text-gray-700"),
+            html.Label("Select Departure Airport:", className="font-bold text-gray-700 mt-0"),
             dcc.Dropdown(id='departure-airport-dropdown', options=airport_options, placeholder="Select a departure airport",
                 className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
         ]),
 
         # Arrival Airport Selection
         html.Div(children=[
-            html.Label("Select Arrival Airport:", className="font-bold text-gray-700"),
+            html.Label("Select Arrival Airport:", className="font-bold text-gray-700 mt-0"),
             dcc.Dropdown(id='arrival-airport-dropdown', options=airport_options, placeholder="Select an arrival airport",
                 className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
         ]),
@@ -60,7 +61,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
         
         # Departure Date Picker
         html.Div(children=[
-            html.Label("Departure Date:", className="font-bold text-gray-700"),
+            html.Label("Departure Date:", className="font-bold text-gray-700 mt-0"),
             dcc.DatePickerSingle(
                 display_format="DD/MM/YYYY",
                 id='departure-date-picker',
@@ -73,7 +74,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
 
         # Return Date Picker
         html.Div(children=[
-            html.Label("Return Date:", className="font-bold text-gray-700"),
+            html.Label("Return Date:", className="font-bold text-gray-700 mt-0"),
             dcc.DatePickerSingle(
                 display_format="DD/MM/YYYY",
                 id='return-date-picker',
@@ -84,11 +85,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
             )
         ]),
 
-    ]),
-        # html.Div(children=[
-        #      # Search Button
-        #     html.Button("Search Route", id="search-button", className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg mt-4 hover:bg-blue-700 transition"),
-        # ],className="flex fl"),
+    ]), 
 
         # Filter options
         html.Div(children=[
@@ -110,7 +107,9 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
     # html.Div(id='route-validation', className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md my-4"),
 
     # Combined Route Information
-    html.Div(id='route-info', className="bg-white p-5 rounded-lg "),
+    html.Div(id='route-info', className="bg-white p-4 rounded-lg ", children=[
+        html.Div(id='route-info-content', className="mt-4"),
+    ]),
 
     # Full-Width Map Visualization
     html.Div(className="w-full md:h-screen h-full bg-white rounded-lg  overflow-hidden", children=[
@@ -180,17 +179,6 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection=projection_type)
 
     def filter_routes_by_date(route, selected_depart_date, selected_return_date):
-        """
-        Filters the available routes based on departure date.
-        
-        Args:
-            route (Route): The route object containing carriers.
-            selected_depart_date (str): The selected departure date (YYYY-MM-DD).
-            selected_return_date (str): The selected return date (YYYY-MM-DD) or None.
-
-        Returns:
-            list: A filtered list of available carriers for the selected date.
-        """
 
         if not selected_depart_date and not selected_return_date:
             return route.carriers  # Return all carriers in this route
@@ -209,7 +197,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         total_est_price = 0
         route_details = []
         filtered_route = []
-
+        seats_remaining = []
         for i in range(len(route) - 1):
             segment_start_iata, segment_end_iata = route[i], route[i + 1]
 
@@ -228,9 +216,10 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
                 if not available_carriers:
                     continue  # Skip routes with no available flights on selected date
-                
                 # Get airline names
-                carrier_names = ', '.join(f"{carrier.name} | Seat(s): {carrier.seats_remaining}" for carrier in available_carriers) or "Unknown Airline"
+                seats_remaining = [carrier.seats_remaining for carrier in available_carriers] 
+
+                carrier_names = " | ".join( f"{carrier.name}: {carrier.seats_remaining} seats left" for carrier in available_carriers ) if available_carriers else "Unknown Airline"
                 
                 distance = route_info.km
                 total_distance += distance
@@ -238,13 +227,25 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
                 price = get_price_for_route(segment_start_airport, segment_end_airport)
                 total_est_price += price
 
-                route_details.append(html.P(
-                    f"✈️ {segment_start_airport.name} ({segment_start_iata}) → {segment_end_airport.name} ({segment_end_iata}) | "
-                    f"{distance} km | Airline(s): {carrier_names}",
-                    className="text-gray-700"
-                ))
+                route_details.append(html.Div(className="p-3 border-b border-gray-300", children=[
+                html.H4(f"✈️ {segment_start_airport.name} ({segment_start_iata}) → {segment_end_airport.name} ({segment_end_iata})",
+                        className="font-semibold text-lg"),
+                
+                html.Div(className="flex flex-wrap justify-between text-sm text-gray-700", children=[
+                    html.Div(children=[
+                        html.P(f"Distance: {distance} km"),
+                        html.P(f"Estimated Price: ${price:.2f}")
+                    ]),
+                    html.Div(children=[
+                        html.P(f"🛫 Departure: {segment_start_airport.name}"),
+                        html.P(f"🛬 Arrival: {segment_end_airport.name}")
+                    ])
+                ]),
 
-                filtered_route.append(route[i])
+                html.P(f"Airline(s): {carrier_names}", className="text-sm text-gray-600"),
+            ]))
+
+            filtered_route.append(route[i])
 
         return total_distance, route_details, total_est_price, filtered_route
 
@@ -253,19 +254,54 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
     if not route_details:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}.", px.scatter_geo(projection=projection_type)
 
-    
-    route_status = "✅ Route Found" if len(route_details) == len(route) - 1 else "⚠️ Partial Route Found"
-    layovers = len(route) - 1 if len(route_details) == len(route) - 1 else len(route_details)
+    # layovers = len(route) - 1 if len(route_details) == len(route) - 1 else len(route_details)
 
     route_info_content = html.Div([
-        html.H3(route_status, className="text-lg font-bold text-green-600"),
-        html.P(f"📍 Total Distance: {total_distance} km", className="font-semibold"),
-        html.P(f"✈️ Number of Layovers: {layovers}", className="font-semibold"),
-        html.P(f"💰 Estimated Price: ${estimated_price:.2f}", className="font-semibold"),
-        html.H4("🛫 Flight Route Details", className="font-bold mt-4"),
-        *route_details
-    ], className="p-2 rounded-md my-3")
 
+    html.Div(children=[
+        html.Div(className="flex items-center justify-between", children=[
+            html.Div(children=[
+                html.H3("Sky Wings", className="text-lg font-bold"),
+                html.P(f"Flight {filtered_route[0]} → {filtered_route[-1]}", className="text-gray-600"),
+            ]),
+            html.Div(children=[
+                html.P(f"${estimated_price:.2f}", className="text-xl font-bold text-green-600"),
+                html.P("per person", className="text-sm text-gray-500")
+            ])
+        ]),
+
+        html.Div(className="border-t my-3 border-gray-300"),  # Horizontal line
+        
+        html.Div(className="flex justify-between text-sm text-gray-700", children=[
+            html.Div(children=[
+                html.P("🛫 Departure:", className="font-semibold"),
+                html.P(f"{dep_airport.name} ({dep_airport.iata})"),
+                html.P(f"{formatted_depart_date}"),
+                # html.P(f"Time: {depart_date[-5:]}")
+            ]),
+            html.Div(children=[
+                html.P("🛬 Arrival:", className="font-semibold"),
+                html.P(f"{arr_airport.name} ({arr_airport.iata})"),
+                html.P(f"{formatted_return_date}"),
+                # html.P(f"Time: {return_date[-5:] if return_date else 'N/A'}")
+            ])
+        ]),
+
+        html.Div(className="mt-2 text-gray-700", children=[
+            html.P(f"🕒 Number of stop(s): {len(route) - 1} ", className="font-semibold"),
+            html.P(f"📍 Total Distance: {total_distance} km"),
+        ]),
+
+        # html.Div(className="mt-3 text-sm text-gray-500", children=[
+        #     html.P(f"Only {8} seats left at this price!", className="text-red-600"),
+        # ]),
+
+        dbc.Accordion([
+            dbc.AccordionItem([ *route_details
+            ], title="Flight Details")
+        ]),
+        ])
+    ], className="rounded-lg p-3")
 
     # Map visualization with selected projection
     route_fig = px.line_geo(
