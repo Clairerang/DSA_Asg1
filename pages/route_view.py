@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 import plotly.express as px
 from dash import dcc, html, Output, Input, callback, register_page
 from data_loader import airport_db  # Import the global AirportDatabase object
-from algorithms import bfs_min_connections
+from algorithms import bfs_min_connections, yen_k_shortest_paths
 
 todayDate = date.today() # For date selection
 
@@ -17,8 +17,8 @@ airport_options = [
 
 # Define filter options
 filter_options = [
-    {'label': "Price (Cheapest)", 'value': "price_cheapest"},
-    {'label': "Shortest Path", 'value': "shortest_path"},
+    {'label': "Price (Cheapest)", 'value': "shortest_path"},
+    {'label': "Least Layovers", 'value': "least_layovers"},
 ]
 
 # Available map projections for the dropdown
@@ -92,7 +92,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
         # Filter options
         html.Div(children=[
             html.Label("Filter by:", className="font-bold text-gray-700"),
-            dcc.Dropdown(id='filter-dropdown', options=filter_options, placeholder="Filter by",
+            dcc.Dropdown(id='filter-dropdown', options=filter_options, placeholder="Filter by", value="shortest_path",
                 className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
         ]),
 
@@ -161,15 +161,18 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         ], className="p-4 bg-red-100 border-l-4 border-red-500 rounded-md"), px.scatter_geo(projection=projection_type)
 
     # Find shortest path using BFS
-    if filter_option == "shortest_path":
-        route = bfs_min_connections(airport_db, departure_iata, arrival_iata)
-    else:
-        # If no filter or cheapest price selected, find direct shortest route
-        departure_airport = airport_db.get_airport(departure_iata)
-        if departure_airport and any(route.iata == arrival_iata for route in departure_airport.routes):
-            route = [departure_iata, arrival_iata]  # Direct flight exists
-        else:
-            route = None  # No direct route available
+    if filter_option == "least_layovers":
+        route = bfs_min_connections(departure_iata, arrival_iata)
+    elif filter_option == "shortest_path":
+        route = yen_k_shortest_paths(departure_iata, arrival_iata)
+        route = route[0]
+    # else:
+    #     # If no filter or cheapest price selected, find direct shortest route
+    #     departure_airport = airport_db.get_airport(departure_iata)
+    #     if departure_airport and any(route.iata == arrival_iata for route in departure_airport.routes):
+    #         route = [departure_iata, arrival_iata]  # Direct flight exists
+    #     else:
+    #         route = None  # No direct route available
 
     if not route:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection=projection_type)
@@ -250,7 +253,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
     if not route_details:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}.", px.scatter_geo(projection=projection_type)
     
-    route_status = "✅ Route Found" if len(route_details) == len(route) - 1 else "✅ Partial Route Found"
+    route_status = "✅ Route Found" if len(route_details) == len(route) - 1 else "⚠️ Partial Route Found"
     layovers = len(route) - 1 if len(route_details) == len(route) - 1 else len(route_details)
 
     route_info_content = html.Div([
