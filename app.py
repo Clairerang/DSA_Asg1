@@ -8,7 +8,7 @@ import dash_bootstrap_components as dbc
 external_stylesheets = ["https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css", dbc.themes.BOOTSTRAP]
 
 # Initialize Dash app with pages enabled
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets, use_pages=True)
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets, use_pages=True, suppress_callback_exceptions=True)
 
 # Layout with sidebar
 app.layout = html.Div(className="flex min-h-screen", children=[
@@ -54,4 +54,4 @@ app.layout.children.insert(0, dcc.Location(id="url", refresh=False))
 
 if __name__ == '__main__':
     print(f"🚀 Server is now running at http://127.0.0.1:8050/route-view")
-    app.run_server(debug=True)
+    app.run_server(debug=False)
