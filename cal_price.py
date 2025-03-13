@@ -27,32 +27,3 @@ def get_price_for_route(origin, destination, price_per_km = 0.25):
     except ValueError as e:
         print(f"Error processing route: {e}")
         return None
-
-def get_airport_code(prompt):
-    """Gets a valid IATA code from the user."""
-    while True:
-        code = input(prompt).strip().upper()
-        if len(code) == 3 and code.isalpha():
-            return code
-        else:
-            print("Invalid IATA code. Please enter a 3-letter code.")
-
-def main():
-    """Main function to handle user input and display results."""
-    while True:
-        origin_iata = get_airport_code("Enter departure airport IATA code: ")
-        destination_iata = get_airport_code("Enter destination airport IATA code: ")
-
-        price = get_price_for_route(origin_iata, destination_iata)
-
-        if price is not None:
-            print(f"Price from {origin_iata} to {destination_iata}: ${price:.2f}")
-        else:
-            print(f"Could not calculate price for the route from {origin_iata} to {destination_iata}.")
-
-        another_calculation = input("Calculate another price? (y/n): ").strip().lower()
-        if another_calculation != 'y':
-            break  
-
-if __name__ == "__main__":
-    main()
