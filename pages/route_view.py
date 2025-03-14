@@ -42,7 +42,7 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
     # dcc.Store(id="recent-searches", storage_type="local"),
 
     # Title
-    html.H2("Flight Path Visualization", className="text-2xl font-bold text-white my-3"),
+    html.H2("Hi, where would you like to go?", className="text-2xl font-bold text-white my-3"),
 
     # Recent Searches Container
     # html.Div(id="recent-searches-container", className="p-3 bg-gray-100 rounded-md"),
