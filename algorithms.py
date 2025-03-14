@@ -1,8 +1,9 @@
 from collections import deque, defaultdict
 from data_loader import airport_db  # Import the global AirportDatabase object
 import heapq
+from math import radians, cos, sin, sqrt, atan2
 
-## BFS
+### BFS ALGO ###
 def bfs_min_connections(start_iata, goal_iata):
     """
     Finds the shortest flight route (minimum layovers) between two airports using BFS,
@@ -48,7 +49,7 @@ def bfs_min_connections(start_iata, goal_iata):
 
     return None  # No route found
 
-## DIJKSTRA
+### DIJKSTRA ALGO ###
 def yen_k_shortest_paths(src, dest, k=1):
     """
     Finds K-shortest paths between source and destination using Yen's Algorithm.
@@ -142,6 +143,68 @@ def yen_k_shortest_paths(src, dest, k=1):
 
     return A  # Return list of IATA code sequences
 
+### ASTAR ALGO ###
+def haversine_distance(lat1, lon1, lat2, lon2):
+    R = 6371  # Earth radius in kilometers
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    return R * c
+
+# Heuristic function
+def heuristic(a, b):
+    airport_a = airport_db.get_airport(a)
+    airport_b = airport_db.get_airport(b)
+
+    # if not airport_a or not airport_b:
+    #     return float('inf')  # Return high cost if invalid airports
+
+    return haversine_distance(float(airport_a.latitude), float(airport_a.longitude),
+                              float(airport_b.latitude), float(airport_b.longitude))
+
+# A* search algorithm with relaxed filtering for layovers but enforcing at least one preferred airline
+def astar_preferred_airline(start, goal, preferred_airline_iatas, k=1):
+    open_set = [(0, 0, start, [], False)]  # (priority, cost_so_far, current_node, path, has_preferred)
+    visited = set()
+    best_routes = []
+    preferred_airline_iatas = {iata.upper() for iata in preferred_airline_iatas}  # Ensure uppercase for comparison
+
+    while open_set:
+        priority, cost, current, path, has_preferred = heapq.heappop(open_set)
+        
+        if current == goal:
+            if has_preferred:  # Ensure at least one preferred airline is in the journey
+                # best_routes.append((path + [current], cost))
+                best_routes.append(path + [current])
+            continue
+
+        if current in visited:
+            continue
+
+        visited.add(current)
+
+        current_airport = airport_db.get_airport(current)
+        if not current_airport:
+            continue
+
+        for route in current_airport.routes:
+            neighbor = route.iata
+            airline_iatas = {carrier.iata.upper() for carrier in route.carriers}
+            airline_names = [carrier.name for carrier in route.carriers]
+
+            is_preferred = bool(airline_iatas.intersection(preferred_airline_iatas))
+            
+            if neighbor in airport_db.airports and neighbor not in visited:
+                base_cost = route.km
+                new_cost = cost + base_cost
+                priority = new_cost + heuristic(neighbor, goal)
+                heapq.heappush(open_set, (priority, new_cost, neighbor, path + [current], has_preferred or is_preferred))
+    
+    return sorted(best_routes)[:k]
+
 
 if __name__ == "__main__":
     # User input
@@ -150,10 +213,10 @@ if __name__ == "__main__":
 
 
     # BFS
-    # print(bfs_min_connections(airport_db, start_iata, goal_iata))
+    print(bfs_min_connections(start_iata, goal_iata))
 
 
-    routes = yen_k_shortest_paths(start_iata, goal_iata)
+    # routes = yen_k_shortest_paths(start_iata, goal_iata)
     # print(routes)
     # if routes:
     #     print(f"Top {len(routes)} shortest routes found:")
@@ -161,3 +224,5 @@ if __name__ == "__main__":
     #         print(f"Route {idx}: {' → '.join(route)}")
     # else:
     #     print(f"No route found from {start_iata} to {goal_iata}.")
+    routes = astar_preferred_airline(start_iata, goal_iata, ["SQ"], k=3)
+    print(routes)

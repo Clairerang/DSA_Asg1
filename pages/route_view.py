@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 import plotly.express as px
 from dash import dcc, html, Output, Input, callback, register_page, State
 from data_loader import airport_db  # Import the global AirportDatabase object
-from algorithms import bfs_min_connections, yen_k_shortest_paths
+from algorithms import bfs_min_connections, yen_k_shortest_paths, astar_preferred_airline
 from cal_price import get_price_for_route
 import dash_bootstrap_components as dbc
 import dash
@@ -22,6 +22,7 @@ airport_options = [
 filter_options = [
     {'label': "Price (Cheapest)", 'value': "shortest_path"},
     {'label': "Least Layovers", 'value': "least_layovers"},
+    {'label': "Search Airline", 'value': "search_airline"},
 ]
 
 # Available map projections for the dropdown
@@ -100,6 +101,22 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
             dcc.Dropdown(id='filter-dropdown', options=filter_options, placeholder="Filter by", value="shortest_path",
                 className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200")
         ]),
+
+        # Airline Multi-Select Dropdown (Dynamic Options)
+        html.Div(
+            id="airline-dropdown-container",
+            style={"display": "none"},
+                children=[
+                    html.Label("Select Preferred Airlines:"),
+                    dcc.Dropdown(
+                        id='airline-dropdown',
+                        multi=True,  # Allows multiple selections
+                        placeholder="Select available airlines",
+                        className="bg-white border rounded-md shadow-sm focus:ring focus:ring-blue-200"
+                    ),
+                ]
+        ),
+        
 
         # Map Projection Selection
         html.Div(children=[
@@ -267,9 +284,10 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
      Input('departure-date-picker', 'date'),  
      Input('return-date-picker', 'date'),  
      Input('filter-dropdown', 'value'),
-     Input('map-projection-dropdown', 'value')]  
+     Input('map-projection-dropdown', 'value'),
+     Input('airline-dropdown', 'value'),]  
 )
-def update_route_map(departure_iata, arrival_iata, depart_date, return_date, filter_option, projection_type):
+def update_route_map(departure_iata, arrival_iata, depart_date, return_date, filter_option, projection_type, airline_type):
     if not departure_iata or not arrival_iata:
         return "⚠️ Please select both departure and destination airports.", px.scatter_geo(projection=projection_type)
 
@@ -300,6 +318,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
             html.P("⚠️ The departure date cannot be later than the return date.", className="text-gray-700")
         ], className="p-4 bg-red-100 border-l-4 border-red-500 rounded-md"), px.scatter_geo(projection=projection_type)
 
+    route = None
     # Find shortest path using BFS
     if filter_option == "least_layovers":
         route = bfs_min_connections(departure_iata, arrival_iata)
@@ -307,6 +326,11 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         route = yen_k_shortest_paths(departure_iata, arrival_iata)
         if route:
             route = route[0]
+    elif filter_option == "search_airline":
+        if airline_type:
+            route = astar_preferred_airline(departure_iata, arrival_iata, airline_type)
+            if route:
+                route = route[0]
     # else:
     #     # If no filter or cheapest price selected, find direct shortest route
     #     departure_airport = airport_db.get_airport(departure_iata)
@@ -337,7 +361,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         total_est_price = 0
         route_details = []
         filtered_route = []
-        seats_remaining = []
+
         for i in range(len(route) - 1):
             segment_start_iata, segment_end_iata = route[i], route[i + 1]
 
@@ -356,9 +380,8 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
 
                 if not available_carriers:
                     continue  # Skip routes with no available flights on selected date
-                # Get airline names
-                seats_remaining = [carrier.seats_remaining for carrier in available_carriers] 
 
+                # Get airline names & Seats Left
                 carrier_names = " | ".join( f"{carrier.name}: {carrier.seats_remaining} seats left" for carrier in available_carriers ) if available_carriers else "Unknown Airline"
                 
                 distance = route_info.km
@@ -395,7 +418,6 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}.", px.scatter_geo(projection=projection_type)
 
     # layovers = len(route) - 1 if len(route_details) == len(route) - 1 else len(route_details)
-
     route_info_content = html.Div([
 
     html.Div(children=[
@@ -435,13 +457,15 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         # html.Div(className="mt-3 text-sm text-gray-500", children=[
         #     html.P(f"Only {8} seats left at this price!", className="text-red-600"),
         # ]),
-
-        dbc.Accordion([
-            dbc.AccordionItem([ *route_details
-            ], title="Route Details")
-        ]),
-        ])
+        dbc.Accordion([dbc.AccordionItem([*route_details], title="Route Details")]),
+        
+        ]
+    ),
+        
     ], className="rounded-lg p-3")
+
+    
+
 
     # Map visualization with selected projection
     route_fig = px.line_geo(
@@ -473,3 +497,42 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
     )
 
     return route_info_content, route_fig
+
+
+@callback(
+    [Output('airline-dropdown', 'options'),
+     Output('airline-dropdown-container', 'style')],
+    [Input('departure-airport-dropdown', 'value'),
+     Input('arrival-airport-dropdown', 'value'),
+     Input('filter-dropdown', 'value')]
+)
+def update_airline_options(departure_iata, arrival_iata, filter_options):
+    """Generates airline options based on selected departure & arrival airports and shows/hides the dropdown."""
+    if filter_options != "search_airline":
+        return [], {"display": "none"}
+    
+    if not departure_iata or not arrival_iata:
+        return [], {"display": "none"}  # Keep hidden if not both selected
+
+    departure_airport = airport_db.get_airport(departure_iata)
+    if not departure_airport:
+        return [], {"display": "none"}
+
+
+    unique_carrier = get_unique_carrier()
+    # Convert to dropdown options
+    airline_options = [{'label': f"{unique_carrier[iata]} ({iata})", 'value': iata} for iata in unique_carrier.keys()]
+
+    # Show dropdown only if airlines are found
+    style = {"display": "block"} if airline_options else {"display": "none"}
+    
+    return airline_options, style
+
+def get_unique_carrier():
+    unique_carrier = {}  # Dictionary to store unique IATA -> Name mapping
+
+    for airport in airport_db.airports.values():
+        for route in airport.routes:
+            for carrier in route.carriers:
+                unique_carrier[carrier.iata] = carrier.name  # Store IATA -> Name mapping
+    return unique_carrier 

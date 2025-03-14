@@ -54,4 +54,4 @@ app.layout.children.insert(0, dcc.Location(id="url", refresh=False))
 
 if __name__ == '__main__':
     print(f"🚀 Server is now running at http://127.0.0.1:8050/route-view")
-    app.run_server(debug=False)
+    app.run_server(debug=True)
