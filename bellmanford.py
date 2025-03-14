@@ -15,7 +15,7 @@ def calculate_price(distance, price_per_km):
     return distance * price_per_km
 
 def load_airport_data(filepath):
-    """Loads airport data, converting lat/lon to radians."""
+    """Loads airport data, converts lat/lon to radians."""
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -93,7 +93,7 @@ def get_price_for_route_bellman_ford(origin_iata, destination_iata, airport_data
         print(f"Error processing route: {e}")
         return None, None
 
-def bellman_ford(graph, start, end, airport_data, discount_routes): # Added parameters
+def bellman_ford(graph, start, end, airport_data, discount_routes):
     """Finds the shortest path using Bellman-Ford (with early exit)."""
     distances = {node: float('inf') for node in graph}
     predecessors = {node: None for node in graph}
@@ -136,6 +136,43 @@ def bellman_ford(graph, start, end, airport_data, discount_routes): # Added para
 
     path.reverse()
     return distances[end], path, total_distance
+
+def print_detailed_route(path, airport_data):
+    """Prints a detailed route breakdown, similar to the image."""
+    if path is None or len(path) < 2:
+        print("No route found.")
+        return
+
+    print("Shortest route found:")  # Consistent with your image
+    total_distance = 0
+    for i in range(len(path) - 1):
+        origin = path[i]
+        destination = path[i + 1]
+
+        # Use pre-calculated radian values for distance calculation
+        distance = calculate_distance(
+            airport_data[origin]["latitude_rad"],
+            airport_data[origin]["longitude_rad"],
+            airport_data[destination]["latitude_rad"],
+            airport_data[destination]["longitude_rad"]
+        )
+        total_distance += distance
+
+        # --- Robust Airline Information Retrieval ---
+        airlines = []
+        # Check if 'routes' and origin airport exist in airport_data
+        if "routes" in airport_data.get(origin, {}) :
+            for route in airport_data[origin]["routes"]:
+                if route.get("iata") == destination:  # Use .get() for safety
+                    if "carriers" in route:
+                        for carrier in route["carriers"]:
+                            airlines.append(carrier.get("name", "Unknown Airline"))  # Use .get()
+
+        airline_str = ", ".join(airlines) if airlines else "Unknown Airline"
+        print(f"{origin} -> {destination} | {distance:.0f} km | Airlines: {airline_str}")
+
+    print(f"Total Distance: {total_distance:.0f} km")
+
 
 def main():
     filepath = "airline_routes.json"
@@ -181,18 +218,16 @@ def main():
                 if price is not None:
                     graph_bf[airport][destination] = {"cost": price}
 
-    # Pass airport_data and discount_routes to bellman_ford
-    bf_price, bf_path, total_distance = bellman_ford(graph_bf, origin_iata, destination_iata, airport_data, discount_routes)
+    bf_price, bf_path, total_bf_distance = bellman_ford(graph_bf, origin_iata, destination_iata, airport_data, discount_routes)
     standard_price, standard_distance = get_price_for_route(origin_iata, destination_iata, airport_data, price_per_km)
 
     if bf_price is not None:
-        print(f"Shortest distance (Bellman-Ford) from {origin_iata} to {destination_iata}: ${bf_price:.2f}")
-        print(f"Path: {', '.join(bf_path)}")
-        print(f"Total Distance (Bellman-Ford): {total_distance:.2f} km")
+        print_detailed_route(bf_path, airport_data)  # Use the corrected function
 
         if standard_price is not None and standard_price != 0:
             discount_percentage = ((standard_price - bf_price) / standard_price) * 100
             print(f"Discount percentage compared to standard price: {discount_percentage:.2f}%")
+            print(f"Bellman-Ford Price: ${bf_price:.2f}")
         elif standard_price == 0:
             print("Standard price is zero, cannot calculate discount.")
         else:
