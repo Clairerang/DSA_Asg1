@@ -189,13 +189,13 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
             route = astar_preferred_airline(departure_iata, arrival_iata, airline_type)
             if route:
                 route = route[0]
-    # else:
-    #     # If no filter or cheapest price selected, find direct shortest route
-    #     departure_airport = airport_db.get_airport(departure_iata)
-    #     if departure_airport and any(route.iata == arrival_iata for route in departure_airport.routes):
-    #         route = [departure_iata, arrival_iata]  # Direct flight exists
-    #     else:
-    #         route = None  # No direct route available
+    else:
+        # If no filter or cheapest price selected, find direct shortest route
+        departure_airport = airport_db.get_airport(departure_iata)
+        if departure_airport and any(route.iata == arrival_iata for route in departure_airport.routes):
+            route = [departure_iata, arrival_iata]  # Direct flight exists
+        else:
+            route = None  # No direct route available
 
     if not route:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name}.", px.scatter_geo(projection=projection_type)
@@ -271,18 +271,21 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         filtered_route.append(route[-1])
 
         return total_distance, route_details, total_est_price, filtered_route
-
+    
     total_distance, route_details, estimated_price, filtered_route = calculate_route_details(route,airport_db)
     
     if not route_details:
         return f"❌ No route available from {dep_airport.name} to {arr_airport.name} on {formatted_depart_date} to {formatted_return_date}.", px.scatter_geo(projection=projection_type)
-
-    # layovers = len(route) - 1 if len(route_details) == len(route) - 1 else len(route_details)
+    
+    is_partial_route = bool(depart_date) and len(route) > 1
+    route_status = "⚠️ Partial Route Found" if is_partial_route else ""
+    
     route_info_content = html.Div([
 
     html.Div(children=[
         html.Div(className="flex items-center justify-between", children=[
             html.Div(children=[
+                html.H3(f"{route_status}", className="text-lg font-bold text-yellow-600" if is_partial_route else "text-green-600"),
                 html.H3("Sky Wings", className="text-lg font-bold"),
                 html.P(f"Flight {filtered_route[0]} → {filtered_route[-1]}", className="text-gray-600"),
             ]),
@@ -299,7 +302,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
                 html.P("🛫 Departure:", className="font-semibold"),
                 html.P(f"{dep_airport.name} ({dep_airport.iata})"),
                 html.P(f"{formatted_depart_date}"),
-                # html.P(f"Time: {depart_date[-5:]}")
+                # html.P(f"Time: {depart_date[-5:] if depart_date else 'N/A'}")
             ]),
             html.Div(children=[
                 html.P("🛬 Arrival:", className="font-semibold"),
@@ -310,7 +313,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
         ]),
 
         html.Div(className="mt-2 text-gray-700", children=[
-            html.P(f"🕒 Number of stop(s): {len(route) - 1} ", className="font-semibold"),
+            html.P(f"🕒 Number of stop(s): {len(filtered_route) - 1} ", className="font-semibold"),
             html.P(f"📍 Total Distance: {total_distance} km"),
         ]),
 
