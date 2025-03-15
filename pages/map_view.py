@@ -18,7 +18,7 @@ layout = html.Div([
 
     html.Div(id='airport-info'),
     html.Div(id='airlines-info'),
-    dcc.Graph(id='airport-map', 
+    dcc.Graph(id='airport-map',
         config={
             'scrollZoom': True,
             'displayModeBar': False,
@@ -29,8 +29,8 @@ layout = html.Div([
 
 @callback(
     [Output('airport-info', 'children'),
-     Output('airlines-info', 'children'),
-     Output('airport-map', 'figure')],
+    Output('airlines-info', 'children'),
+    Output('airport-map', 'figure')],
     [Input('airport-dropdown', 'value')]
 )
 def update_airport_info(selected_iata):

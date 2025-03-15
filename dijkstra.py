@@ -8,6 +8,19 @@ with open('airline_routes.json', 'r') as file:
 
 # Calculate heuristic using haversine distance
 def haversine(lat1, lon1, lat2, lon2):
+    """
+    Calculates the Haversine distance between two points on Earth.
+
+    Args:
+        lat1: Latitude of the first point in degrees.
+        lon1: Longitude of the first point in degrees.
+        lat2: Latitude of the second point in degrees.
+        lon2: Longitude of the second point in degrees.
+
+    Returns:
+        The Haversine distance in kilometers.
+    """
+
     R = 6371  # Earth radius in kilometers
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
     dlat, dlon = lat2 - lat1, lon2 - lon1
@@ -18,12 +31,29 @@ def haversine(lat1, lon1, lat2, lon2):
     return R * c
 
 def dijkstra(airports, src, dest):
-    queue = [(0, src, [])]
-    seen = set()
-    min_dist = {src: 0}
+    """
+    Finds the shortest path between two airports using Dijkstra's algorithm.
+
+    Args:
+        airports: A dictionary representing the airport and route data.  The keys
+            are airport IATA codes (strings), and the values are dictionaries
+            containing airport details, including a 'routes' list.
+        src: The IATA code of the source (departure) airport.
+        dest: The IATA code of the destination airport.
+
+    Returns:
+        A tuple containing:
+            - The total distance of the shortest path in kilometers (float).
+            - A list of airport IATA codes representing the shortest path
+            (list of strings).
+        Returns (float('inf'), []) if no path is found.
+    """
+    queue = [(0, src, [])]  # Priority queue: (distance, current_node, path_so_far)
+    seen = set()    # Keep track of visited nodes
+    min_dist = {src: 0} # Store the minimum distance to reach each node
 
     while queue:
-        (distance, node, path) = heapq.heappop(queue)
+        (distance, node, path) = heapq.heappop(queue) # Get the node with the smallest distance
         if node in seen:
             continue
 
@@ -32,13 +62,18 @@ def dijkstra(airports, src, dest):
 
         if node == dest:
             return (distance, path)
-
+        
+        # Iterate through the routes (edges) from the current airport
         for route in airports[node]['routes']:
             neighbor = route['iata']
+
             if neighbor in seen:
                 continue
+
             prev_dist = min_dist.get(neighbor, float('inf'))
             new_dist = distance + route['km']
+
+            # If a shorter path to the neighbor is found, update min_dist and add to the queue
             if new_dist < prev_dist:
                 min_dist[neighbor] = new_dist
                 heapq.heappush(queue, (new_dist, neighbor, path))

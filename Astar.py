@@ -8,8 +8,23 @@ with open('airline_routes.json', 'r') as file:
 
 #calculate heuristic using haversine distance
 def haversine_distance(lat1, lon1, lat2, lon2):
+    """
+    Calculates the Haversine distance between two points on Earth.
+
+    Args:
+        lat1: Latitude of the first point in degrees.
+        lon1: Longitude of the first point in degrees.
+        lat2: Latitude of the second point in degrees.
+        lon2: Longitude of the second point in degrees.
+
+    Returns:
+        The Haversine distance in kilometers.
+    """
+
     R = 6371  # Earth radius in kilometers
+
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+
     dlat, dlon = lat2 - lat1, lon2 - lon1
 
     a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
@@ -19,12 +34,41 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 # heuristic function
 def heuristic(a, b):
+    """
+    Calculates the heuristic (estimated distance) between two airports using the Haversine distance.
+
+    Args:
+        airports: The dictionary of airport data.
+        a: IATA code of the first airport.
+        b: IATA code of the second airport.
+
+    Returns:
+        The estimated distance between the two airports in kilometers.
+    """
+
     lat1, lon1 = float(airports[a]['latitude']), float(airports[a]['longitude'])
     lat2, lon2 = float(airports[b]['latitude']), float(airports[b]['longitude'])
     return haversine_distance(lat1, lon1, lat2, lon2)
 
 #A* search algorithm with relaxed filtering for layovers but enforcing at least one preferred airline
 def astar_preferred_airline(airports, start, goal, preferred_airlines):
+    """
+    Finds the top 5 routes between two airports using the A* search algorithm,
+    prioritizing routes with at least one flight operated by a preferred airline.
+
+    Args:
+        airports: A dictionary containing airport and route data.
+        start: The IATA code of the starting airport.
+        goal: The IATA code of the destination airport.
+        preferred_airlines: A list of preferred airline names (case-insensitive).
+
+    Returns:
+        A list of up to 5 tuples, sorted by total distance.  Each tuple contains:
+            - A list of airport IATA codes representing the path.
+            - The total distance of the path in kilometers.
+        Returns an empty list if no suitable routes are found.
+    """
+    
     open_set = [(0, 0, start, [], False)]  # (priority, cost_so_far, current_node, path, has_preferred)
     visited = set()
     best_routes = []

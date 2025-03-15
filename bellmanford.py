@@ -2,7 +2,18 @@ import json
 import math
 
 def calculate_distance(lat1_rad, lon1_rad, lat2_rad, lon2_rad):
-    """Calculates distance (Haversine, optimized)."""
+    """
+    Calculates the distance between two points on Earth using the Haversine formula.
+
+    Args:
+        lat1_rad: Latitude of the first point in radians.
+        lon1_rad: Longitude of the first point in radians.
+        lat2_rad: Latitude of the second point in radians.
+        lon2_rad: Longitude of the second point in radians.
+
+    Returns:
+        The distance between the two points in kilometers.
+    """
     dlon = lon2_rad - lon1_rad
     dlat = lat2_rad - lat1_rad
     a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
@@ -50,10 +61,25 @@ def get_airport_code(prompt):
             print("Invalid IATA code. Please enter a 3-letter code.")
 
 def get_price_for_route(origin_iata, destination_iata, airport_data, price_per_km):
-    """Calculates price (no discounts), using pre-calculated radians."""
+    """
+    Calculates the price and distance for a given route (without discounts).
+
+    Args:
+        origin_iata: The IATA code of the origin airport.
+        destination_iata: The IATA code of the destination airport.
+        airport_data: The dictionary containing airport data.
+        price_per_km: The price per kilometer.
+
+    Returns:
+        A tuple containing:
+            - The calculated price (float) or None if the route is invalid.
+            - The calculated distance (float) or None if the route is invalid.
+    """
+
     if origin_iata not in airport_data or destination_iata not in airport_data:
         return None, None
     try:
+        # Use pre-calculated radian values
         origin_lat_rad = airport_data[origin_iata]["latitude_rad"]
         origin_lon_rad = airport_data[origin_iata]["longitude_rad"]
         dest_lat_rad = airport_data[destination_iata]["latitude_rad"]
@@ -66,7 +92,23 @@ def get_price_for_route(origin_iata, destination_iata, airport_data, price_per_k
         return None, None
 
 def get_price_for_route_bellman_ford(origin_iata, destination_iata, airport_data, price_per_km, discount_routes):
-    """Calculates price (Bellman-Ford, discounts), using pre-calculated radians."""
+    """
+    Calculates the price and distance for a given route, applying discounts
+    using logic similar to Bellman-Ford (for handling one-way/two-way discounts).
+
+    Args:
+        origin_iata: IATA code of the origin airport.
+        destination_iata: IATA code of the destination airport.
+        airport_data: Dictionary containing airport data.
+        price_per_km: Price per kilometer.
+        discount_routes: Dictionary of discount rules.  Keys are tuples:
+                        (origin_iata, destination_iata). Values are tuples:
+                        (discount_percentage, is_two_way_discount).
+
+    Returns:
+        A tuple: (final_price, distance).  Returns (None, None) on error.
+    """
+
     if origin_iata not in airport_data or destination_iata not in airport_data:
         return None, None
     try:
@@ -74,9 +116,11 @@ def get_price_for_route_bellman_ford(origin_iata, destination_iata, airport_data
         origin_lon_rad = airport_data[origin_iata]["longitude_rad"]
         dest_lat_rad = airport_data[destination_iata]["latitude_rad"]
         dest_lon_rad = airport_data[destination_iata]["longitude_rad"]
+
         distance = calculate_distance(origin_lat_rad, origin_lon_rad, dest_lat_rad, dest_lon_rad)
         base_price = calculate_price(distance, price_per_km)
 
+        # Apply discounts if applicable
         if (origin_iata, destination_iata) in discount_routes:
             discount_percentage, is_two_way = discount_routes[(origin_iata, destination_iata)]
             final_price = base_price * (1 - discount_percentage)
@@ -89,12 +133,37 @@ def get_price_for_route_bellman_ford(origin_iata, destination_iata, airport_data
         else:
             final_price = base_price
         return final_price, distance
+    
     except (KeyError, ValueError, Exception) as e:
         print(f"Error processing route: {e}")
         return None, None
 
 def bellman_ford(graph, start, end, airport_data, discount_routes):
-    """Finds the shortest path using Bellman-Ford (with early exit)."""
+    """
+    Finds the shortest path (lowest price) between two airports using the
+    Bellman-Ford algorithm, handling potential discounts.
+
+    Args:
+        graph:  An adjacency list representing the flight network, where keys are
+                airport IATA codes and values are dictionaries of neighboring
+                airports with associated costs.
+        start: The IATA code of the starting airport.
+        end: The IATA code of the destination airport.
+        airport_data: The dictionary containing airport data.
+        discount_routes: A dictionary mapping (origin, destination) IATA pairs
+                        to (discount_percentage, is_two_way) tuples.
+
+    Returns:
+        A tuple containing:
+        - The total cost of the shortest path (float), or None if no path
+            exists or a negative-weight cycle is detected.
+        - A list of airport IATA codes representing the shortest path,
+            or None if no path exists or a negative-weight cycle is detected.
+        - The total *distance* of the shortest path (float), or None if no
+            path exists or a negative-weight cycle is detected.  This is
+            the *actual* distance traveled, *not* a cost.
+    """
+
     distances = {node: float('inf') for node in graph}
     predecessors = {node: None for node in graph}
     distances[start] = 0
@@ -138,7 +207,15 @@ def bellman_ford(graph, start, end, airport_data, discount_routes):
     return distances[end], path, total_distance
 
 def print_detailed_route(path, airport_data):
-    """Prints a detailed route breakdown, similar to the image."""
+    """
+    Prints a detailed breakdown of the route, including airports, distances,
+    and airlines.
+
+    Args:
+        path:  A list of airport IATA codes representing the route.
+        airport_data:  The dictionary containing airport and route data.
+    """
+    
     if path is None or len(path) < 2:
         print("No route found.")
         return

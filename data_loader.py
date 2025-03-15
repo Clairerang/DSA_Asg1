@@ -13,8 +13,8 @@ def read_json_file(file_path):
         file_path (str): The path to the JSON file.
 
     Returns:
-        dict or list: The JSON data as a Python dictionary or list,
-                      or None if an error occurred.
+        dict or list:   The JSON data as a Python dictionary or list,
+                        or None if an error occurred.
     """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:

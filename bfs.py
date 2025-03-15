@@ -7,6 +7,22 @@ with open('airline_routes.json', 'r') as file:
 
 # BFS Algorithm to find minimum layovers between airports
 def bfs_min_connections(airports, start, goal):
+    """
+    Finds the path with the minimum number of connections (layovers) between two airports
+    using Breadth-First Search (BFS).
+
+    Args:
+        airports: A dictionary representing the airport and route data.  Keys are
+            airport IATA codes (strings), and values are dictionaries with airport
+            details, including a 'routes' list.
+        start: The IATA code of the starting airport.
+        goal: The IATA code of the destination airport.
+
+    Returns:
+        A list of airport IATA codes representing the path with the fewest connections,
+        or None if no path is found.
+    """
+
     queue = deque([(start, [start])])
     visited = set()
 
