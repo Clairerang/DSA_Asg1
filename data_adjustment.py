@@ -26,8 +26,8 @@ def randomize_dates(filename: str, output_filename: str):
         if 'routes' in airport_data:
             for route in airport_data['routes']:
                 for carrier_data in route['carriers']:
-                    # 1. Randomize the *departure date* (within the next 365 days)
-                    random_days_offset = random.randint(0, 365)
+                    # 1. Randomize the *departure date* (within the next 30 days)
+                    random_days_offset = random.randint(0, 30)
                     base_departure_datetime = now + datetime.timedelta(days=random_days_offset)
 
                     # 2. Randomize the *departure time* (between 6 AM and 10 PM)
