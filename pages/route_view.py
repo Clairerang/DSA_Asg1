@@ -1,11 +1,12 @@
 from datetime import datetime, date, timedelta
 import plotly.express as px
-from dash import dcc, html, Output, Input, callback, register_page, State
+from dash import dcc, html, Output, Input, callback, register_page, State, clientside_callback, ClientsideFunction
 from data_loader import airport_db  # Import the global AirportDatabase object
 from algorithms import bfs_min_connections, yen_k_shortest_paths, astar_preferred_airline
 from cal_price import get_price_for_route
 import dash_bootstrap_components as dbc
 import dash
+import json
 
 todayDate = date.today() # For date selection
 
@@ -38,9 +39,16 @@ map_projections = [
 
 # Layout
 layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
+    # Add URL component for navigation
+    dcc.Location(id='url', refresh=False),
+    
+    # Add storage components for storing flight data
+    dcc.Store(id='selected-route-data', storage_type='local'),
 
     # Title
     html.H2("Hi, where would you like to go?", className="text-2xl font-bold text-white my-3"),
+
+    # dcc.Store(id="selected_flight", storage_type="local"),
 
     # Form Section
     html.Div(className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-9 pt-8 px-8 bg-white rounded-lg ", children=[
@@ -137,14 +145,17 @@ layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
 @callback(
     [Output('route-info', 'children'),
      Output('route-map', 'figure')],
+    #  Output("selected_flight", "data"),
     [Input('departure-airport-dropdown', 'value'),
      Input('arrival-airport-dropdown', 'value'),
      Input('departure-date-picker', 'date'),  
      Input('return-date-picker', 'date'),  
      Input('filter-dropdown', 'value'),
      Input('map-projection-dropdown', 'value'),
-     Input('airline-dropdown', 'value'),]  
+     Input('airline-dropdown', 'value'),],
+    #  State("route-info", "children"),  
 )
+
 def update_route_map(departure_iata, arrival_iata, depart_date, return_date, filter_option, projection_type, airline_type):
     if not departure_iata or not arrival_iata:
         return "⚠️ Please select both departure and destination airports.", px.scatter_geo(projection=projection_type)
@@ -248,6 +259,12 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
                 price = get_price_for_route(segment_start_airport, segment_end_airport)
                 total_est_price += price
 
+                # Button to select flight
+                # select_button = dcc.Link(
+                # dbc.Button("Select Flight →", className="w-full text-dark bg-transparent border-none transition-all duration-300 hover:bg-primary"),
+                # href=f"/checkout?departure={segment_start_airport.name}&arrival={segment_end_airport.name}&price={price}"
+                # )
+
                 route_details.append(html.Div(className="p-3 border-b border-gray-300", children=[
                 html.H4(f"✈️ {segment_start_airport.name} ({segment_start_iata}) → {segment_end_airport.name} ({segment_end_iata})",
                         className="font-semibold text-lg"),
@@ -259,11 +276,15 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
                     ]),
                     html.Div(children=[
                         html.P(f"🛫 Departure: {segment_start_airport.name}"),
-                        html.P(f"🛬 Arrival: {segment_end_airport.name}")
-                    ])
+                        html.P(f"🛬 Arrival: {segment_end_airport.name}"),
+                    ]),
+
                 ]),
 
-                html.P(f"Airline(s): {carrier_names}", className="text-sm text-gray-600"),
+                html.Div(className="flex flex-row justify-between items-center gap-2", children=[
+                    html.P(f"Airline(s): {carrier_names}", className="text-sm text-gray-600"),
+                    # select_button
+                ]),
             ]))
 
             filtered_route.append(route[i])
@@ -280,51 +301,86 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
     is_partial_route = bool(depart_date) and len(route) > 1
     route_status = "⚠️ Partial Route Found" if is_partial_route else ""
     
+    # Create a data object to store in local storage
+    route_data = {
+        'departure_airport': {
+            'name': dep_airport.name,
+            'iata': dep_airport.iata,
+            'city': dep_airport.city_name,
+            'country': dep_airport.country
+        },
+        'arrival_airport': {
+            'name': arr_airport.name,
+            'iata': arr_airport.iata,
+            'city': arr_airport.city_name,
+            'country': arr_airport.country
+        },
+        'route': [airport for airport in filtered_route],
+        'total_distance': total_distance,
+        'estimated_price': estimated_price,
+        'departure_date': formatted_depart_date,
+        'return_date': formatted_return_date,
+        'num_stops': len(filtered_route) - 1,
+        'is_partial_route': is_partial_route
+    }
+    
+    # Create a select full route button using dcc.Link instead of html.Button
+    select_route_button = html.Div([
+        dcc.Link(
+            html.Button(
+                "Select This Route and Proceed to Checkout", 
+                id="select-route-button",
+                n_clicks=0,
+                className="mt-4 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300",
+            ),
+            href='/checkout',
+            style={"display": "block" if not is_partial_route else "none"}
+        ),
+        # Hidden div to store route data
+        html.Div(id="route-data-container", style={"display": "none"}, 
+                 children=json.dumps(route_data))
+    ])
+    
     route_info_content = html.Div([
-
-    html.Div(children=[
-        html.Div(className="flex items-center justify-between", children=[
-            html.Div(children=[
-                html.H3(f"{route_status}", className="text-lg font-bold text-yellow-600" if is_partial_route else "text-green-600"),
-                html.H3("Sky Wings", className="text-lg font-bold"),
-                html.P(f"Flight {filtered_route[0]} → {filtered_route[-1]}", className="text-gray-600"),
+        html.Div(children=[
+            html.Div(className="flex items-center justify-between", children=[
+                html.Div(children=[
+                    html.H3(f"{route_status}", className="text-lg font-bold text-yellow-600" if is_partial_route else "text-green-600"),
+                    html.H3("Sky Wings", className="text-lg font-bold"),
+                    html.P(f"Flight {filtered_route[0]} → {filtered_route[-1]}", className="text-gray-600"),
+                ]),
+                html.Div(children=[
+                    html.P(f"${estimated_price:.2f}", className="text-xl font-bold text-green-600"),
+                    html.P("per person", className="text-sm text-gray-500")
+                ])
             ]),
-            html.Div(children=[
-                html.P(f"${estimated_price:.2f}", className="text-xl font-bold text-green-600"),
-                html.P("per person", className="text-sm text-gray-500")
-            ])
-        ]),
 
-        html.Div(className="border-t my-3 border-gray-300"),  # Horizontal line
-        
-        html.Div(className="flex justify-between text-sm text-gray-700", children=[
-            html.Div(children=[
-                html.P("🛫 Departure:", className="font-semibold"),
-                html.P(f"{dep_airport.name} ({dep_airport.iata})"),
-                html.P(f"{formatted_depart_date}"),
-                # html.P(f"Time: {depart_date[-5:] if depart_date else 'N/A'}")
+            html.Div(className="border-t my-3 border-gray-300"),  # Horizontal line
+            
+            html.Div(className="flex justify-between text-sm text-gray-700", children=[
+                html.Div(children=[
+                    html.P("🛫 Departure:", className="font-semibold"),
+                    html.P(f"{dep_airport.name} ({dep_airport.iata})"),
+                    html.P(f"{formatted_depart_date}"),
+                ]),
+                html.Div(children=[
+                    html.P("🛬 Arrival:", className="font-semibold"),
+                    html.P(f"{arr_airport.name} ({arr_airport.iata})"),
+                    html.P(f"{formatted_return_date}"),
+                ])
             ]),
-            html.Div(children=[
-                html.P("🛬 Arrival:", className="font-semibold"),
-                html.P(f"{arr_airport.name} ({arr_airport.iata})"),
-                html.P(f"{formatted_return_date}"),
-                # html.P(f"Time: {return_date[-5:] if return_date else 'N/A'}")
-            ])
-        ]),
 
-        html.Div(className="mt-2 text-gray-700", children=[
-            html.P(f"🕒 Number of stop(s): {len(filtered_route) - 1} ", className="font-semibold"),
-            html.P(f"📍 Total Distance: {total_distance} km"),
-        ]),
+            html.Div(className="mt-2 text-gray-700", children=[
+                html.P(f"🕒 Number of stop(s): {len(filtered_route) - 1} ", className="font-semibold"),
+                html.P(f"📍 Total Distance: {total_distance} km"),
+            ]),
 
-        # html.Div(className="mt-3 text-sm text-gray-500", children=[
-        #     html.P(f"Only {8} seats left at this price!", className="text-red-600"),
-        # ]),
-        dbc.Accordion([dbc.AccordionItem([*route_details], title="Route Details")]),
-        
-        ]
-    ),
-        
+            dbc.Accordion([dbc.AccordionItem([*route_details], title="Route Details")]),
+            
+            # Add the select route button
+            select_route_button
+        ]),
+            
     ], className="rounded-lg p-3")
 
     # Map visualization with selected projection
@@ -396,3 +452,24 @@ def get_unique_carrier():
             for carrier in route.carriers:
                 unique_carrier[carrier.iata] = carrier.name  # Store IATA -> Name mapping
     return unique_carrier 
+
+# Callback to store selected route data when button is clicked
+@callback(
+    Output('selected-route-data', 'data'),
+    Input('select-route-button', 'n_clicks'),
+    State('route-data-container', 'children'),
+    prevent_initial_call=True
+)
+def store_route_data(n_clicks, route_data_json):
+    if n_clicks and n_clicks > 0 and route_data_json:
+        try:
+            # Parse the JSON data
+            route_data = json.loads(route_data_json)
+            
+            # Store the data in localStorage
+            return route_data
+        except Exception as e:
+            print(f"Error storing route data: {e}")
+            return dash.no_update
+    
+    return dash.no_update 
