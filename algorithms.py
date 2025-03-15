@@ -215,7 +215,7 @@ if __name__ == "__main__":
     # BFS
     print(bfs_min_connections(start_iata, goal_iata))
 
-
+    # DIJKSTRA
     # routes = yen_k_shortest_paths(start_iata, goal_iata)
     # print(routes)
     # if routes:
@@ -224,5 +224,7 @@ if __name__ == "__main__":
     #         print(f"Route {idx}: {' → '.join(route)}")
     # else:
     #     print(f"No route found from {start_iata} to {goal_iata}.")
+
+    # ASTAR
     routes = astar_preferred_airline(start_iata, goal_iata, ["SQ"], k=3)
     print(routes)

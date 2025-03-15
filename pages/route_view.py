@@ -409,6 +409,8 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
             ]))
 
             filtered_route.append(route[i])
+        
+        filtered_route.append(route[-1])
 
         return total_distance, route_details, total_est_price, filtered_route
 
