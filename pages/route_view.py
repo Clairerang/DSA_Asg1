@@ -334,7 +334,7 @@ def update_route_map(departure_iata, arrival_iata, depart_date, return_date, fil
                 className="mt-4 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300",
             ),
             href='/checkout',
-            style={"display": "block" if not is_partial_route else "none"}
+            style={"display": "block"}
         ),
         # Hidden div to store route data
         html.Div(id="route-data-container", style={"display": "none"}, 

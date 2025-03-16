@@ -12,12 +12,12 @@ layout = html.Div(className="min-h-screen flex flex-col justify-center items-cen
 
     html.H2("OTP Verification", className="text-3xl font-bold text-gray-900 mb-6"),
 
-    html.Div(className="bg-white p-6 rounded-lg shadow-md w-96", children=[
+    html.Div(className="p-6 rounded-lg  w-96", children=[
         html.Label("Enter the 6-digit OTP sent to your email:", className="block font-bold mb-2"),
         dcc.Input(id="otp-input", type="text", className="w-full p-2 border border-gray-300 rounded text-center",
                   placeholder="Enter 6-digit OTP", maxLength=6, inputMode="numeric"),
 
-        html.Button("Verify OTP", id="verify-otp-btn", className="mt-4 bg-blue-600 text-white font-bold px-4 py-2 rounded w-full"),
+        html.Button("Verify OTP", id="verify-otp-btn", className="mt-4 bg-green-600 text-white font-bold px-4 py-2 rounded w-full"),
 
         html.Div(id="otp-message", className="text-red-500 font-semibold mt-2 text-center"),
     ]),

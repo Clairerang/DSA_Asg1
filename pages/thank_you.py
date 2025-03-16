@@ -145,8 +145,8 @@ def download_booking(n_clicks, flight_data, passenger_data):
             <div class="section-title">FARE AND ADDITIONAL INFORMATION</div>
             <table class="price-table">
                 <tr><td>Base Fare:</td><td>${flight_data.get('estimated_price', 0):.2f}</td></tr>
-                <tr><td>GST (9%):</td><td>${flight_data.get('estimated_price', 0) * 0.09:.2f}</td></tr>
-                <tr class="total"><td>Total Price:</td><td>${flight_data.get('estimated_price', 0) * 1.09:.2f}</td></tr>
+                <tr><td>Flight tax ($105):</td><td>${105}</td></tr>
+                <tr class="total"><td>Total Price:</td><td>${flight_data.get('estimated_price', 0) + 105:.2f}</td></tr>
             </table>
         </div>
     </body>
