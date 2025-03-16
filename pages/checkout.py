@@ -6,7 +6,7 @@ from dash import html, dcc, Input, Output, State, callback, register_page
 register_page(__name__, path="/checkout")
 
 # Define GST rate (9%)
-GST_RATE = 0.09
+flight_tax = 105
 
 # Layout
 layout = html.Div(className="min-h-screen flex flex-col px-6 py-8", children=[
@@ -39,8 +39,8 @@ def populate_checkout(route_data):
     num_stops = route_data.get('num_stops', 0)
 
     # Calculate GST and total
-    gst_amount = base_price * GST_RATE
-    total_price = base_price + gst_amount
+    # gst_amount = base_price * GST_RATE
+    total_price = base_price + flight_tax
 
     return html.Div([
         html.Div(className="mb-6", children=[
@@ -106,8 +106,8 @@ def populate_checkout(route_data):
             ]),
             
             html.Div(className="flex justify-between mb-2", children=[
-                html.P("GST (9%):", className="font-semibold text-gray-600"),
-                html.P(f"${gst_amount:.2f}", className="text-gray-600")
+                html.P("Flight tax:", className="font-semibold text-gray-600"),
+                html.P(f"${flight_tax}", className="text-gray-600")
             ]),
 
             html.Hr(className="my-2"),

@@ -43,10 +43,10 @@ def update_active_link(pathname):
         #     "Map View", href="/map-view",
         #     className=f"block py-3 px-2 mx-2 rounded-md {'accent-blue text-white' if pathname == '/map-view' else 'hover:bg-gray-100 hover:text-black transition-colors duration-300'}"
         # ),
-        dcc.Link(
-            "Table View", href="/table-view",
-            className=f"block py-3 px-2 mx-2 text-white no-underline rounded-md {'accent-blue text-white' if pathname == '/table-view' else 'hover:bg-gray-50 no-underline hover:text-dark transition-colors duration-300'}"
-        ),
+        # dcc.Link(
+        #     "Table View", href="/table-view",
+        #     className=f"block py-3 px-2 mx-2 text-white no-underline rounded-md {'accent-blue text-white' if pathname == '/table-view' else 'hover:bg-gray-50 no-underline hover:text-dark transition-colors duration-300'}"
+        # ),
     ]
 
 # Add location component for tracking current page
