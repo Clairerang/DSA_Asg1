@@ -36,7 +36,7 @@ def update_airport_table(selected_iata):
     airport = airport_db.get_airport(selected_iata)
 
     if not airport:
-        return "", "", ""
+        return "", ""
 
     # ✅ Airport Information Table
     airport_table = dash_table.DataTable(
