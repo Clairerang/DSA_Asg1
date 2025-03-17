@@ -69,6 +69,19 @@ def populate_checkout(route_data):
             html.P(f"Number of Stops: {num_stops}", className="text-gray-700"),
         ]),
 
+        html.Div(className="mb-6", children=[ 
+            dbc.Accordion([
+                dbc.AccordionItem([
+                    html.P(f"From: {departure_airport.get('name', '')} ({departure_airport.get('iata', '')})"),
+                    html.P(f"To: {arrival_airport.get('name', '')} ({arrival_airport.get('iata', '')})"),
+                    html.P(f"Departure Date: {departure_date}"),
+                    html.P(f"Return Date: {return_date}"),
+                    html.P(f"Total Distance: {total_distance} km"),
+                    html.P(f"Number of Stops: {num_stops}"),
+                ], title="View Route Details"),
+            ], start_collapsed=True),
+        ]),
+
         # Passenger Details Form
         html.Div(className="bg-gray-50 p-5 rounded-lg shadow-md mb-6", children=[
             html.H3("Passenger Details", className="text-2xl font-bold mb-4"),

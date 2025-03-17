@@ -6,7 +6,7 @@ from math import radians, cos, sin, sqrt, atan2
 with open('airline_routes.json', 'r') as file:
     airports = json.load(file)
 
-#calculate heuristic using haversine distance
+#Calculates the Haversine distance (shortest distance over Earth's surface) between two points using latitude and longitude.
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
     Calculates the Haversine distance between two points on Earth.
@@ -23,8 +23,10 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
     R = 6371  # Earth radius in kilometers
 
+    #convert latitude and longtitude from degrees to radius
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
 
+    #compute the distance using the Haversine formula
     dlat, dlon = lat2 - lat1, lon2 - lon1
 
     a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
@@ -50,66 +52,60 @@ def heuristic(a, b):
     lat2, lon2 = float(airports[b]['latitude']), float(airports[b]['longitude'])
     return haversine_distance(lat1, lon1, lat2, lon2)
 
-#A* search algorithm with relaxed filtering for layovers but enforcing at least one preferred airline
+#A* search algorithm 
 def astar_preferred_airline(airports, start, goal, preferred_airlines):
     """
-    Finds the top 5 routes between two airports using the A* search algorithm,
-    prioritizing routes with at least one flight operated by a preferred airline.
+    Uses A* search to find the best flight routes between two airports,
+    while ensuring that at least one flight in the route && is operated 
+    by a preferred airline.
 
-    Args:
-        airports: A dictionary containing airport and route data.
-        start: The IATA code of the starting airport.
-        goal: The IATA code of the destination airport.
-        preferred_airlines: A list of preferred airline names (case-insensitive).
-
-    Returns:
-        A list of up to 5 tuples, sorted by total distance.  Each tuple contains:
-            - A list of airport IATA codes representing the path.
-            - The total distance of the path in kilometers.
-        Returns an empty list if no suitable routes are found.
     """
     
     open_set = [(0, 0, start, [], False)]  # (priority, cost_so_far, current_node, path, has_preferred)
-    visited = set()
-    best_routes = []
-    preferred_airlines = {airline.lower() for airline in preferred_airlines}
+    visited = set() #store visited airport preventing cycles
+    best_routes = [] #store best flight
+    preferred_airlines = {airline.lower() for airline in preferred_airlines} #store user inputted preferred airlines
 
     while open_set:
         priority, cost, current, path, has_preferred = heapq.heappop(open_set)
 
+        # if we've reached the destination airport, save the route if it contains a preferred airlines
         if current == goal:
             if has_preferred:  # Ensure at least one preferred airline is in the journey
                 best_routes.append((path + [current], cost))
             continue
-
+        
+        #mark the current airport as visited
         if current in visited:
             continue
 
         visited.add(current)
 
+        #explore all direct flights from the current airport
         for route in airports[current].get('routes', []):
-            neighbor = route['iata']
-            airlines = {carrier['name'].lower() for carrier in route.get('carriers', [])}
-            is_preferred = bool(airlines.intersection(preferred_airlines))
+            neighbor = route['iata'] #the destination airport for this flight
+            airlines = {carrier['name'].lower() for carrier in route.get('carriers', [])} #get airlines for this flight
+            is_preferred = bool(airlines.intersection(preferred_airlines)) #check if any airline matches the preferred list
 
+            #add the flight to the search queue if it has not been visited
             if neighbor in airports and neighbor not in visited:
-                base_cost = route['km']
-                new_cost = cost + base_cost
-                priority = new_cost + heuristic(neighbor, goal)
+                base_cost = route['km'] #distance for this flight segment
+                new_cost = cost + base_cost #update total cost(distance travelled)
+                priority = new_cost + heuristic(neighbor, goal) # A* priority: cost + estimated distance
                 heapq.heappush(open_set, (priority, new_cost, neighbor, path + [current], has_preferred or is_preferred))
 
-    return sorted(best_routes, key=lambda x: x[1])[:5]
+    return sorted(best_routes, key=lambda x: x[1])[:1] #return the shortest route with the preferred airlines
 
 #user input by airport IATA codes
 start_airport = input("Enter departure airport IATA code: ").strip().upper()
 goal_airport = input("Enter destination airport IATA code: ").strip().upper()
 preferred_airlines = input("Enter preferred airlines (comma-separated): ").strip().split(',')
-preferred_airlines = [airline.strip().lower() for airline in preferred_airlines]
+preferred_airlines = [airline.strip().lower() for airline in preferred_airlines] #convert to lower case
 
 routes = astar_preferred_airline(airports, start_airport, goal_airport, preferred_airlines)
 
 if routes:
-    print("\nTop 5 best routes considering preferred airlines:")
+    print("\nTop best routes containing your preferred airlines:")
     for route, total_distance in routes:
         print("\nRoute:")
         actual_distance = 0

@@ -1,6 +1,6 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date 
 import plotly.express as px
-from dash import dcc, html, Output, Input, callback, register_page, State, clientside_callback, ClientsideFunction
+from dash import dcc, html, Output, Input, callback, register_page, State
 from data_loader import airport_db  # Import the global AirportDatabase object
 from algorithms import bfs_min_connections, yen_k_shortest_paths, astar_preferred_airline
 from cal_price import get_price_for_route
@@ -35,7 +35,6 @@ map_projections = [
     {"label": "Azimuthal Equal Area", "value": "azimuthal equal area"},
     {"label": "Robinson", "value": "robinson"}
 ]
-
 
 # Layout
 layout = html.Div(className="min-h-screen gap-3 p-2 flex flex-col", children=[
